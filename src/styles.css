@@ -4,6 +4,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-ink: oklch(0.18 0.03 265);
+  --color-aurora-blue: oklch(0.68 0.16 259);
+  --color-aurora-violet: oklch(0.62 0.21 296);
+  --color-aurora-pink: oklch(0.66 0.22 ledge);
+}
+
 /*
  * Design system definition.
  *
