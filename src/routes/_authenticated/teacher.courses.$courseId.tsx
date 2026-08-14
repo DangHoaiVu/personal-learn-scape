@@ -132,14 +132,14 @@ function LessonsTab({
   const [content, setContent] = useState("");
 
   async function add() {
-    if (!title.trim()) return toast.error("Nhập tiêu đề bài học");
+    if (!title.trim()) { toast.error("Nhập tiêu đề bài học"); return; }
     const { error } = await supabase.from("lessons").insert({
       course_id: courseId,
       title: title.trim(),
       content: content.trim() || null,
       order: lessons.length + 1,
     });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setTitle("");
     setContent("");
     onChange();
@@ -214,9 +214,9 @@ function AssignmentsTab({
   const [selected, setSelected] = useState<string | null>(assignments[0]?.id ?? null);
 
   async function add() {
-    if (!title.trim()) return toast.error("Nhập tên bài tập");
+    if (!title.trim()) { toast.error("Nhập tên bài tập"); return; }
     const { error } = await supabase.from("assignments").insert({ course_id: courseId, title: title.trim() });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setTitle("");
     onChange();
   }
@@ -226,7 +226,7 @@ function AssignmentsTab({
       .from("submissions")
       .update({ grade: value === "" ? null : Number(value), feedback: feedback || null })
       .eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Đã lưu điểm");
     onChange();
   }
@@ -343,21 +343,21 @@ function QuizzesTab({
   const topicOptions = [...new Set(questions.map((q) => q.topic_tag))];
 
   async function addQuiz() {
-    if (!quizTitle.trim()) return toast.error("Nhập tên quiz");
+    if (!quizTitle.trim()) { toast.error("Nhập tên quiz"); return; }
     const { data, error } = await supabase
       .from("quizzes")
       .insert({ course_id: courseId, title: quizTitle.trim() })
       .select("id")
       .single();
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setQuizTitle("");
     setSelected(data.id);
     onChange();
   }
 
   async function addQuestion() {
-    if (!selected) return toast.error("Chọn một quiz");
-    if (!text.trim() || !topic.trim()) return toast.error("Câu hỏi và chủ đề (topic tag) là bắt buộc");
+    if (!selected) { toast.error("Chọn một quiz"); return; }
+    if (!text.trim() || !topic.trim()) { toast.error("Câu hỏi và chủ đề (topic tag) là bắt buộc"); return; }
     const { error } = await supabase.from("questions").insert({
       quiz_id: selected,
       text: text.trim(),
@@ -365,7 +365,7 @@ function QuizzesTab({
       correct_answer: correct,
       options: (["A", "B", "C", "D"] as const).map((k) => ({ key: k, text: options[k] || `Phương án ${k}` })),
     });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setText("");
     setOptions({ A: "", B: "", C: "", D: "" });
     toast.success("Đã thêm câu hỏi");

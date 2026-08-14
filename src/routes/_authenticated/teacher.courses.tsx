@@ -30,11 +30,11 @@ function TeacherCourses() {
   const [description, setDescription] = useState("");
 
   async function create() {
-    if (!profile || !title.trim()) return toast.error("Nhập tên khóa học");
+    if (!profile || !title.trim()) { toast.error("Nhập tên khóa học"); return; }
     const { error } = await supabase
       .from("courses")
       .insert({ title: title.trim(), description: description.trim() || null, teacher_id: profile.id });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setTitle("");
     setDescription("");
     toast.success("Đã tạo khóa học");
@@ -43,7 +43,7 @@ function TeacherCourses() {
 
   async function remove(id: string) {
     const { error } = await supabase.from("courses").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Đã xóa khóa học");
     queryClient.invalidateQueries({ queryKey: ["teaching-courses"] });
   }

@@ -33,14 +33,14 @@ function TeacherAnalytics() {
   const { data: questions = [] } = useQuestionAnalytics(ids);
   const { data: logs = [] } = useActivityLogs(ids);
 
-  const inScope = attempts.filter((a) => scoped.includes(a.course_id));
+  const inScope = attempts.filter((a) => scoped.includes(a.quiz?.course_id ?? ""));
 
   const histogram = useMemo(() => {
     const counts = BANDS.map((band) => ({ band, count: 0 }));
     for (const a of inScope) {
       const s = Number(a.score);
       const i = Math.min(4, Math.max(0, Math.floor(s / 2)));
-      counts[i].count += 1;
+      counts[i]!.count += 1;
     }
     return counts;
   }, [inScope]);
@@ -60,7 +60,7 @@ function TeacherAnalytics() {
     for (const l of logs) {
       if (l.course_id && !scoped.includes(l.course_id)) continue;
       const d = new Date(l.timestamp);
-      grid[d.getDay()][d.getHours()] += 1;
+      grid[d.getDay()]![d.getHours()!] = (grid[d.getDay()]![d.getHours()] ?? 0) + 1;
     }
     const max = Math.max(1, ...grid.flat());
     return { grid, max };

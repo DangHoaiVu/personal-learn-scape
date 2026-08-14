@@ -59,7 +59,7 @@ function QuizPage() {
       .single();
     if (error || !attempt) {
       setSaving(false);
-      return toast.error(error?.message ?? "Không lưu được kết quả");
+      { toast.error(error?.message ?? "Không lưu được kết quả"); return; }
     }
     await supabase.from("question_attempts").insert(
       questions.map((q) => ({

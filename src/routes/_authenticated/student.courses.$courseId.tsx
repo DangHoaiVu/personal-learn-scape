@@ -63,14 +63,14 @@ function CoursePage() {
   async function submitAssignment(assignmentId: string) {
     if (!profile) return;
     const content = draft[assignmentId]?.trim();
-    if (!content) return toast.error("Hãy nhập nội dung bài làm");
+    if (!content) { toast.error("Hãy nhập nội dung bài làm"); return; }
     const { error } = await supabase
       .from("submissions")
       .upsert(
         { assignment_id: assignmentId, student_id: profile.id, content, submitted_at: new Date().toISOString() },
         { onConflict: "assignment_id,student_id" },
       );
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     await supabase.from("activity_logs").insert({
       student_id: profile.id,
       course_id: courseId,
