@@ -44,7 +44,7 @@ function AuthPage() {
         });
         if (error) throw error;
         const { error: rpcError } = await supabase.rpc("bootstrap_demo", {
-          _name: name || email.split("@")[0],
+          _name: name || email.split("@")[0] || "Người dùng",
           _role: role,
         });
         if (rpcError) throw rpcError;
