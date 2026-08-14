@@ -523,6 +523,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bootstrap_demo: {
+        Args: { _name: string; _role: Database["public"]["Enums"]["user_role"] }
+        Returns: undefined
+      }
       is_enrolled: { Args: { _course_id: string }; Returns: boolean }
       is_teacher_of: { Args: { _course_id: string }; Returns: boolean }
       shares_course_with: { Args: { _student_id: string }; Returns: boolean }
