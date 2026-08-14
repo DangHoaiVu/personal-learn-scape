@@ -6,7 +6,7 @@ import { GlassPanel, Loading, SectionTitle, StatCard } from "@/components/app/gl
 import { useAttempts, useRiskAlerts, useTeachingCourses } from "@/lib/queries";
 import { tooltipStyle } from "@/components/app/chart-theme";
 
-export const Route = createFileRoute("/_authenticated/teacher")({
+export const Route = createFileRoute("/_authenticated/teacher/")({
   head: () => ({
     meta: [
       { title: "Bảng điều khiển giảng viên · EduSense" },
