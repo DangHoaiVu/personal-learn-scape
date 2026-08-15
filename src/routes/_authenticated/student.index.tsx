@@ -15,7 +15,7 @@ import { useProfile } from "@/lib/session";
 import { useAttempts, useMyCourses, useTopicStats } from "@/lib/queries";
 import { tooltipStyle } from "@/components/app/chart-theme";
 
-export const Route = createFileRoute("/_authenticated/student")({
+export const Route = createFileRoute("/_authenticated/student/")({
   head: () => ({
     meta: [
       { title: "Tổng quan học tập · EduSense" },
