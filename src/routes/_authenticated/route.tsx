@@ -9,6 +9,8 @@ import {
   BookOpen,
   Users,
   BarChart3,
+  ClipboardList,
+  UserRound,
   LogOut,
   Menu,
 } from "lucide-react";
@@ -30,13 +32,18 @@ export const Route = createFileRoute("/_authenticated")({
 
 const studentNav = [
   { to: "/student", label: "Tổng quan", icon: LayoutDashboard },
+  { to: "/student/courses", label: "Khóa học", icon: BookOpen },
+  { to: "/student/assignments", label: "Bài tập", icon: ClipboardList },
   { to: "/student/mastery", label: "Hồ sơ năng lực", icon: Target },
   { to: "/student/tutor", label: "AI Tutor", icon: MessageSquareText },
+  { to: "/profile", label: "Cá nhân", icon: UserRound },
 ];
 const teacherNav = [
   { to: "/teacher", label: "Tổng quan", icon: LayoutDashboard },
   { to: "/teacher/courses", label: "Khóa học", icon: BookOpen },
+  { to: "/teacher/students", label: "Sinh viên", icon: Users },
   { to: "/teacher/analytics", label: "Phân tích", icon: BarChart3 },
+  { to: "/profile", label: "Cá nhân", icon: UserRound },
 ];
 
 function Shell() {
