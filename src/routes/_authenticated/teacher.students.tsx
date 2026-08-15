@@ -60,9 +60,11 @@ function TeacherStudents() {
       const mine = attempts
         .filter((a) => a.student_id === s.id && a.quiz && (courseFilter === "all" || a.quiz.course_id === courseFilter))
         .sort((a, b) => a.attempted_at.localeCompare(b.attempted_at));
+      const first = mine[0];
+      const latest = mine[mine.length - 1];
       const avg = mine.length ? mine.reduce((t, a) => t + Number(a.score), 0) / mine.length : null;
-      const trend = mine.length >= 2 ? Number(mine[mine.length - 1].score) - Number(mine[0].score) : 0;
-      const last = mine.length ? mine[mine.length - 1].attempted_at : null;
+      const trend = first && latest && mine.length >= 2 ? Number(latest.score) - Number(first.score) : 0;
+      const last = latest ? latest.attempted_at : null;
       return { ...s, avg, trend, attempts: mine.length, last };
     })
     .filter((s) => s.name.toLowerCase().includes(q.trim().toLowerCase()))
