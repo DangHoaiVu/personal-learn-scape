@@ -6,6 +6,7 @@ import { GlassPanel, Loading, SectionTitle, StatCard } from "@/components/app/gl
 import { supabase } from "@/integrations/supabase/client";
 import { useMyCourses } from "@/lib/queries";
 import { useProfile } from "@/lib/session";
+import { deadlineClass, deadlineInfo } from "@/lib/deadline";
 
 export const Route = createFileRoute("/_authenticated/student/assignments")({
   head: () => ({
@@ -116,6 +117,16 @@ function StudentAssignments() {
                   <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-slate-400">
                     <CalendarClock className="h-3.5 w-3.5" /> Hạn nộp: {fmt(a.due_date)}
                   </p>
+                  {(() => {
+                    const dl = deadlineInfo(a.due_date, Boolean(sub));
+                    return dl.tone === "none" ? null : (
+                      <span
+                        className={`ml-2 inline-block rounded-full border px-2.5 py-0.5 text-[11px] ${deadlineClass[dl.tone]}`}
+                      >
+                        {dl.label}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   {sub ? (
