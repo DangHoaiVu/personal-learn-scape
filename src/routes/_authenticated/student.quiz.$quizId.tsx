@@ -28,7 +28,9 @@ function QuizPage() {
   const { data: profile } = useProfile();
   const navigate = useNavigate();
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<{ score: number; total: number; correct: number } | null>(null);
+  const [result, setResult] = useState<{ score: number; total: number; correct: number; attemptId: string } | null>(
+    null,
+  );
   const [saving, setSaving] = useState(false);
 
   const { data, isLoading } = useQuery({
@@ -65,6 +67,7 @@ function QuizPage() {
       questions.map((q) => ({
         quiz_attempt_id: attempt.id,
         question_id: q.id,
+        chosen_answer: answers[q.id] ?? null,
         is_correct: answers[q.id] === q.correct_answer,
       })),
     );
@@ -74,7 +77,7 @@ function QuizPage() {
       action: "take_quiz",
       timestamp: new Date().toISOString(),
     });
-    setResult({ score, total: questions.length, correct });
+    setResult({ score, total: questions.length, correct, attemptId: attempt.id });
     setSaving(false);
   }
 
@@ -90,12 +93,20 @@ function QuizPage() {
           <p className="mt-2 text-sm text-slate-400">
             Đúng {result.correct}/{result.total} câu. Hồ sơ năng lực đã được cập nhật.
           </p>
-          <button
-            onClick={() => navigate({ to: "/student/mastery" })}
-            className="mt-6 rounded-full bg-gradient-to-r from-aurora-blue to-aurora-violet px-6 py-2.5 text-sm font-semibold text-slate-50"
-          >
-            Xem hồ sơ năng lực
-          </button>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <button
+              onClick={() => navigate({ to: "/student/attempts/$attemptId", params: { attemptId: result.attemptId } })}
+              className="rounded-full border border-white/15 bg-white/5 px-6 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/10"
+            >
+              Xem lại bài làm
+            </button>
+            <button
+              onClick={() => navigate({ to: "/student/mastery" })}
+              className="rounded-full bg-gradient-to-r from-aurora-blue to-aurora-violet px-6 py-2.5 text-sm font-semibold text-slate-50"
+            >
+              Xem hồ sơ năng lực
+            </button>
+          </div>
         </LiquidPanel>
       </div>
     );
