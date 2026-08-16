@@ -252,18 +252,21 @@ export type Database = {
       }
       question_attempts: {
         Row: {
+          chosen_answer: string | null
           id: string
           is_correct: boolean
           question_id: string
           quiz_attempt_id: string
         }
         Insert: {
+          chosen_answer?: string | null
           id?: string
           is_correct: boolean
           question_id: string
           quiz_attempt_id: string
         }
         Update: {
+          chosen_answer?: string | null
           id?: string
           is_correct?: boolean
           question_id?: string
