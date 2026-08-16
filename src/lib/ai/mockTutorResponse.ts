@@ -55,7 +55,7 @@ export async function studentTutorReply(ctx: StudentTutorContext): Promise<strin
     return `Lộ trình ôn tập đề xuất cho bạn, ưu tiên từ chủ đề yếu nhất:\n${plan}\n\nVới mỗi chủ đề: đọc lại bài giảng → làm 8–10 câu hỏi cùng nhãn chủ đề → kiểm tra lại chỉ số ở trang Hồ sơ năng lực.`;
   }
 
-  if (q.includes("mạnh") || q.includes("tốt nhất")) {
+  if (strongest && (q.includes("mạnh") || q.includes("tốt nhất"))) {
     return `Chủ đề bạn đang làm tốt nhất là **${strongest.topic_tag}** với ${strongest.pct.toFixed(0)}% câu đúng. Hãy giữ nhịp và dồn thời gian còn lại cho **${weakest.topic_tag}**.`;
   }
 
