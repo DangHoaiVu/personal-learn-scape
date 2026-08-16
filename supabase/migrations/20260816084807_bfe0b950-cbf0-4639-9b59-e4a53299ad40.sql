@@ -1,0 +1,1 @@
+ALTER TABLE public.question_attempts ADD COLUMN IF NOT EXISTS chosen_answer text;

@@ -6,6 +6,7 @@ import { LiquidPanel, Loading } from "@/components/app/glass";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/session";
 import { useTopicStats, useMyCourses } from "@/lib/queries";
+import { studentTutorReply } from "@/lib/ai/mockTutorResponse";
 
 export const Route = createFileRoute("/_authenticated/student/tutor")({
   head: () => ({
@@ -48,26 +49,6 @@ function TutorPage() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  function buildReply(question: string) {
-    const weakest = topics
-      .filter((t) => t.total >= 3)
-      .map((t) => ({ ...t, pct: (t.correct / t.total) * 100 }))
-      .sort((a, b) => a.pct - b.pct)[0];
-    const courseName = weakest ? courses.find((c) => c.id === weakest.course_id)?.title : null;
-    const q = question.toLowerCase();
-
-    if (weakest && (q.includes("ôn") || q.includes("học gì") || q.includes("yếu") || q.includes("gợi ý"))) {
-      return `Dựa trên dữ liệu bài làm của bạn, chủ đề yếu nhất là **${weakest.topic_tag}** (${weakest.pct.toFixed(0)}% đúng, môn ${courseName}). Gợi ý: xem lại bài giảng của chủ đề này, làm lại 8-10 câu hỏi cùng tag, rồi kiểm tra lại chỉ số ở trang Hồ sơ năng lực.`;
-    }
-    if (q.includes("điểm") || q.includes("kết quả")) {
-      return "Bạn có thể xem xu hướng điểm từng môn ở trang Tổng quan. Nếu một môn có nhãn “Đang tụt”, hãy ưu tiên ôn hai chủ đề có % thành thạo thấp nhất của môn đó trước.";
-    }
-    if (weakest) {
-      return `Mình đã ghi nhận câu hỏi của bạn. Trong lúc đó, một gợi ý nhanh: chủ đề **${weakest.topic_tag}** đang ở mức ${weakest.pct.toFixed(0)}% — đây là nơi bạn cải thiện điểm nhanh nhất.`;
-    }
-    return "Hãy làm ít nhất một bài quiz để mình có dữ liệu phân tích năng lực và đưa ra gợi ý chính xác nhé.";
-  }
-
   async function send(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || !profile) return;
@@ -75,9 +56,10 @@ function TutorPage() {
     setInput("");
     setSending(true);
     await supabase.from("chat_messages").insert({ student_id: profile.id, role: "user", content: text });
+    const reply = await studentTutorReply({ question: text, topics, courses });
     await supabase
       .from("chat_messages")
-      .insert({ student_id: profile.id, role: "ai", content: buildReply(text) });
+      .insert({ student_id: profile.id, role: "ai", content: reply });
     await queryClient.invalidateQueries({ queryKey: ["chat"] });
     setSending(false);
   }

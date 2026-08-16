@@ -127,6 +127,7 @@ export type Database = {
           id: string
           teacher_id: string | null
           title: string
+          visible: boolean
         }
         Insert: {
           created_at?: string
@@ -134,6 +135,7 @@ export type Database = {
           id?: string
           teacher_id?: string | null
           title: string
+          visible?: boolean
         }
         Update: {
           created_at?: string
@@ -141,6 +143,7 @@ export type Database = {
           id?: string
           teacher_id?: string | null
           title?: string
+          visible?: boolean
         }
         Relationships: [
           {
@@ -249,18 +252,21 @@ export type Database = {
       }
       question_attempts: {
         Row: {
+          chosen_answer: string | null
           id: string
           is_correct: boolean
           question_id: string
           quiz_attempt_id: string
         }
         Insert: {
+          chosen_answer?: string | null
           id?: string
           is_correct: boolean
           question_id: string
           quiz_attempt_id: string
         }
         Update: {
+          chosen_answer?: string | null
           id?: string
           is_correct?: boolean
           question_id?: string
@@ -291,6 +297,7 @@ export type Database = {
           quiz_id: string
           text: string
           topic_tag: string
+          visible: boolean
         }
         Insert: {
           correct_answer: string
@@ -299,6 +306,7 @@ export type Database = {
           quiz_id: string
           text: string
           topic_tag: string
+          visible?: boolean
         }
         Update: {
           correct_answer?: string
@@ -307,6 +315,7 @@ export type Database = {
           quiz_id?: string
           text?: string
           topic_tag?: string
+          visible?: boolean
         }
         Relationships: [
           {
@@ -363,18 +372,21 @@ export type Database = {
           created_at: string
           id: string
           title: string
+          visible: boolean
         }
         Insert: {
           course_id: string
           created_at?: string
           id?: string
           title: string
+          visible?: boolean
         }
         Update: {
           course_id?: string
           created_at?: string
           id?: string
           title?: string
+          visible?: boolean
         }
         Relationships: [
           {
@@ -529,7 +541,19 @@ export type Database = {
       }
       is_enrolled: { Args: { _course_id: string }; Returns: boolean }
       is_teacher_of: { Args: { _course_id: string }; Returns: boolean }
+      recompute_risk_alerts: { Args: never; Returns: number }
+      search_students: {
+        Args: { _q: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       shares_course_with: { Args: { _student_id: string }; Returns: boolean }
+      teacher_add_student: {
+        Args: { _course_id: string; _new_name: string; _student_id: string }
+        Returns: string
+      }
     }
     Enums: {
       user_role: "student" | "teacher"
