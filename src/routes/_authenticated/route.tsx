@@ -13,6 +13,8 @@ import {
   UserRound,
   LogOut,
   Menu,
+  Compass,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +35,7 @@ export const Route = createFileRoute("/_authenticated")({
 const studentNav = [
   { to: "/student", label: "Tổng quan", icon: LayoutDashboard },
   { to: "/student/courses", label: "Khóa học", icon: BookOpen },
+  { to: "/student/browse", label: "Đăng ký khóa", icon: Compass },
   { to: "/student/assignments", label: "Bài tập", icon: ClipboardList },
   { to: "/student/mastery", label: "Hồ sơ năng lực", icon: Target },
   { to: "/student/tutor", label: "AI Tutor", icon: MessageSquareText },
@@ -42,7 +45,9 @@ const teacherNav = [
   { to: "/teacher", label: "Tổng quan", icon: LayoutDashboard },
   { to: "/teacher/courses", label: "Khóa học", icon: BookOpen },
   { to: "/teacher/students", label: "Sinh viên", icon: Users },
+  { to: "/teacher/alerts", label: "Cảnh báo", icon: AlertTriangle },
   { to: "/teacher/analytics", label: "Phân tích", icon: BarChart3 },
+  { to: "/teacher/tutor", label: "Trợ lý lớp", icon: MessageSquareText },
   { to: "/profile", label: "Cá nhân", icon: UserRound },
 ];
 
