@@ -32,11 +32,7 @@ function BrowseCourses() {
     enabled: Boolean(profile?.id),
     queryFn: async () => {
       const [courses, mine] = await Promise.all([
-        supabase
-          .from("courses")
-          .select("id,title,description,teacher:profiles(name)")
-          .eq("visible", true)
-          .order("created_at"),
+        supabase.rpc("browse_open_courses", { _q: "" }),
         supabase.from("enrollments").select("course_id").eq("student_id", profile!.id),
       ]);
       const enrolled = new Set((mine.data ?? []).map((e) => e.course_id));
@@ -45,7 +41,7 @@ function BrowseCourses() {
           id: string;
           title: string;
           description: string | null;
-          teacher: { name: string } | null;
+          teacher_name: string | null;
         }[]),
         enrolled,
       };
@@ -108,7 +104,7 @@ function BrowseCourses() {
                 <div>
                   <SectionTitle title={c.title} icon={<BookOpen className="h-4 w-4" />} />
                   <p className="line-clamp-3 text-sm text-slate-400">{c.description}</p>
-                  <p className="mt-3 text-xs text-slate-500">Giảng viên: {c.teacher?.name ?? "Đang cập nhật"}</p>
+                  <p className="mt-3 text-xs text-slate-500">Giảng viên: {c.teacher_name ?? "Đang cập nhật"}</p>
                 </div>
                 <button
                   disabled={joined || busy === c.id}

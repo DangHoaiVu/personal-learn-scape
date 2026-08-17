@@ -539,6 +539,15 @@ export type Database = {
         Args: { _name: string; _role: Database["public"]["Enums"]["user_role"] }
         Returns: undefined
       }
+      browse_open_courses: {
+        Args: { _q?: string }
+        Returns: {
+          description: string
+          id: string
+          teacher_name: string
+          title: string
+        }[]
+      }
       is_enrolled: { Args: { _course_id: string }; Returns: boolean }
       is_teacher_of: { Args: { _course_id: string }; Returns: boolean }
       recompute_risk_alerts: { Args: never; Returns: number }
