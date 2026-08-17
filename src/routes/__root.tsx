@@ -17,19 +17,25 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="glass-panel max-w-md p-8 text-center">
+        <h1 className="stat-num text-7xl font-bold text-slate-100">404</h1>
+        <h2 className="mt-4 text-xl font-semibold text-slate-100">Không tìm thấy trang</h2>
+        <p className="mt-2 text-sm text-slate-400">
+          Trang bạn tìm không tồn tại hoặc đã được chuyển sang địa chỉ khác.
         </p>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-sm font-semibold text-slate-50"
           >
-            Go home
+            Về trang chủ
+          </Link>
+          <Link
+            to="/app"
+            className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+          >
+            Bảng điều khiển
           </Link>
         </div>
       </div>
