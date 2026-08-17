@@ -445,7 +445,7 @@ function QuizzesTab({
   onChange,
 }: {
   courseId: string;
-  quizzes: { id: string; title: string }[];
+  quizzes: { id: string; title: string; visible: boolean }[];
   questions: { id: string; quiz_id: string; text: string; topic_tag: string }[];
   onChange: () => void;
 }) {
@@ -500,11 +500,11 @@ function QuizzesTab({
         </div>
         <ul className="mt-4 space-y-2">
           {quizzes.map((q) => (
-            <li key={q.id}>
+            <li key={q.id} className="flex items-center gap-1">
               <button
                 onClick={() => setSelected(q.id)}
                 className={cn(
-                  "w-full rounded-xl border px-3 py-2 text-left text-sm",
+                  "flex-1 rounded-xl border px-3 py-2 text-left text-sm",
                   selected === q.id
                     ? "border-aurora-blue/50 bg-aurora-blue/15 text-slate-100"
                     : "border-white/10 bg-white/[0.03] text-slate-300",
@@ -514,6 +514,31 @@ function QuizzesTab({
                 <span className="ml-2 text-xs text-slate-500">
                   {questions.filter((x) => x.quiz_id === q.id).length} câu
                 </span>
+                {!q.visible ? <span className="ml-2 text-xs text-[color:var(--warning)]">đang ẩn</span> : null}
+              </button>
+              <button
+                onClick={async () => {
+                  const { error } = await supabase.from("quizzes").update({ visible: !q.visible }).eq("id", q.id);
+                  if (error) { toast.error(error.message); return; }
+                  onChange();
+                }}
+                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-100"
+                aria-label={q.visible ? "Ẩn quiz" : "Hiện quiz"}
+              >
+                {q.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={async () => {
+                  const { error } = await supabase.from("quizzes").delete().eq("id", q.id);
+                  if (error) { toast.error("Không xóa được (quiz đã có lượt làm bài) — hãy dùng nút ẩn."); return; }
+                  if (selected === q.id) setSelected(null);
+                  toast.success("Đã xóa quiz");
+                  onChange();
+                }}
+                className="rounded-lg p-1.5 text-slate-400 hover:text-destructive"
+                aria-label="Xóa quiz"
+              >
+                <Trash2 className="h-4 w-4" />
               </button>
             </li>
           ))}
