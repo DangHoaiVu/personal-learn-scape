@@ -1,11 +1,24 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, ClipboardList, FileCheck2, Plus, Trash2, Users } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardList,
+  Download,
+  Eye,
+  EyeOff,
+  FileCheck2,
+  Pencil,
+  Plus,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { GlassPanel, Loading, SectionTitle } from "@/components/app/glass";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { downloadCsv } from "@/lib/csv";
 
 export const Route = createFileRoute("/_authenticated/teacher/courses/$courseId")({
   head: () => ({
@@ -34,10 +47,10 @@ function ManageCourse() {
     queryKey: ["manage-course", courseId],
     queryFn: async () => {
       const [course, lessons, assignments, quizzes, enrollments, submissions] = await Promise.all([
-        supabase.from("courses").select("id,title,description").eq("id", courseId).maybeSingle(),
+        supabase.from("courses").select("id,title,description,visible").eq("id", courseId).maybeSingle(),
         supabase.from("lessons").select("id,title,content,order").eq("course_id", courseId).order("order"),
         supabase.from("assignments").select("id,title,description,due_date").eq("course_id", courseId),
-        supabase.from("quizzes").select("id,title").eq("course_id", courseId).order("created_at"),
+        supabase.from("quizzes").select("id,title,visible").eq("course_id", courseId).order("created_at"),
         supabase.from("enrollments").select("student_id,student:profiles(id,name)").eq("course_id", courseId),
         supabase.from("submissions").select("id,assignment_id,student_id,content,grade,feedback"),
       ]);
@@ -49,7 +62,7 @@ function ManageCourse() {
         course: course.data,
         lessons: lessons.data ?? [],
         assignments: assignments.data ?? [],
-        quizzes: quizzes.data ?? [],
+        quizzes: (quizzes.data ?? []) as { id: string; title: string; visible: boolean }[],
         questions: (questions.data ?? []) as { id: string; quiz_id: string; text: string; topic_tag: string }[],
         enrollments: (enrollments.data ?? []) as unknown as {
           student_id: string;
@@ -78,10 +91,10 @@ function ManageCourse() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-100">{data.course?.title}</h1>
-        <p className="text-sm text-slate-400">{data.course?.description}</p>
-      </div>
+      <CourseHeader
+        course={data.course as { id: string; title: string; description: string | null; visible: boolean }}
+        onChange={invalidate}
+      />
 
       <div className="flex flex-wrap gap-2">
         {tabs.map((t) => (
@@ -114,8 +127,111 @@ function ManageCourse() {
       {tab === "quizzes" ? (
         <QuizzesTab courseId={courseId} quizzes={data.quizzes} questions={data.questions} onChange={invalidate} />
       ) : null}
-      {tab === "students" ? <StudentsTab students={data.enrollments} /> : null}
+      {tab === "students" ? (
+        <StudentsTab courseId={courseId} students={data.enrollments} onChange={invalidate} />
+      ) : null}
     </div>
+  );
+}
+
+function CourseHeader({
+  course,
+  onChange,
+}: {
+  course: { id: string; title: string; description: string | null; visible: boolean } | null;
+  onChange: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(course?.title ?? "");
+  const [description, setDescription] = useState(course?.description ?? "");
+
+  if (!course) return null;
+
+  async function save() {
+    if (!course) return;
+    if (!title.trim()) {
+      toast.error("Nhập tên khóa học");
+      return;
+    }
+    const { error } = await supabase
+      .from("courses")
+      .update({ title: title.trim(), description: description.trim() || null })
+      .eq("id", course.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setEditing(false);
+    toast.success("Đã cập nhật khóa học");
+    onChange();
+  }
+
+  async function toggleVisible() {
+    if (!course) return;
+    const { error } = await supabase.from("courses").update({ visible: !course.visible }).eq("id", course.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(course.visible ? "Đã ẩn khỏi danh mục đăng ký" : "Đã mở cho sinh viên đăng ký");
+    onChange();
+  }
+
+  return (
+    <GlassPanel className="p-4">
+      {editing ? (
+        <div className="space-y-3">
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tên khóa học" />
+          <textarea
+            rows={2}
+            className={inputCls}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Mô tả"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={save}
+              className="rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-sm font-semibold text-slate-50"
+            >
+              Lưu
+            </button>
+            <button
+              onClick={() => {
+                setEditing(false);
+                setTitle(course.title);
+                setDescription(course.description ?? "");
+              }}
+              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200"
+            >
+              Hủy
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-100">{course.title}</h1>
+            <p className="text-sm text-slate-400">{course.description}</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={toggleVisible}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+            >
+              {course.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              {course.visible ? "Đang mở đăng ký" : "Đang ẩn"}
+            </button>
+            <button
+              onClick={() => setEditing(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+            >
+              <Pencil className="h-4 w-4" /> Sửa
+            </button>
+          </div>
+        </div>
+      )}
+    </GlassPanel>
   );
 }
 
@@ -329,7 +445,7 @@ function QuizzesTab({
   onChange,
 }: {
   courseId: string;
-  quizzes: { id: string; title: string }[];
+  quizzes: { id: string; title: string; visible: boolean }[];
   questions: { id: string; quiz_id: string; text: string; topic_tag: string }[];
   onChange: () => void;
 }) {
@@ -384,11 +500,11 @@ function QuizzesTab({
         </div>
         <ul className="mt-4 space-y-2">
           {quizzes.map((q) => (
-            <li key={q.id}>
+            <li key={q.id} className="flex items-center gap-1">
               <button
                 onClick={() => setSelected(q.id)}
                 className={cn(
-                  "w-full rounded-xl border px-3 py-2 text-left text-sm",
+                  "flex-1 rounded-xl border px-3 py-2 text-left text-sm",
                   selected === q.id
                     ? "border-aurora-blue/50 bg-aurora-blue/15 text-slate-100"
                     : "border-white/10 bg-white/[0.03] text-slate-300",
@@ -398,6 +514,31 @@ function QuizzesTab({
                 <span className="ml-2 text-xs text-slate-500">
                   {questions.filter((x) => x.quiz_id === q.id).length} câu
                 </span>
+                {!q.visible ? <span className="ml-2 text-xs text-[color:var(--warning)]">đang ẩn</span> : null}
+              </button>
+              <button
+                onClick={async () => {
+                  const { error } = await supabase.from("quizzes").update({ visible: !q.visible }).eq("id", q.id);
+                  if (error) { toast.error(error.message); return; }
+                  onChange();
+                }}
+                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-100"
+                aria-label={q.visible ? "Ẩn quiz" : "Hiện quiz"}
+              >
+                {q.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={async () => {
+                  const { error } = await supabase.from("quizzes").delete().eq("id", q.id);
+                  if (error) { toast.error("Không xóa được (quiz đã có lượt làm bài) — hãy dùng nút ẩn."); return; }
+                  if (selected === q.id) setSelected(null);
+                  toast.success("Đã xóa quiz");
+                  onChange();
+                }}
+                className="rounded-lg p-1.5 text-slate-400 hover:text-destructive"
+                aria-label="Xóa quiz"
+              >
+                <Trash2 className="h-4 w-4" />
               </button>
             </li>
           ))}
@@ -481,17 +622,135 @@ function QuizzesTab({
   );
 }
 
-function StudentsTab({ students }: { students: { student_id: string; student: { id: string; name: string } | null }[] }) {
+function StudentsTab({
+  courseId,
+  students,
+  onChange,
+}: {
+  courseId: string;
+  students: { student_id: string; student: { id: string; name: string } | null }[];
+  onChange: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<{ id: string; name: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  async function search() {
+    const { data, error } = await supabase.rpc("search_students", { _q: q.trim() });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const enrolled = new Set(students.map((s) => s.student_id));
+    setResults(((data ?? []) as { id: string; name: string }[]).filter((s) => !enrolled.has(s.id)));
+  }
+
+  async function add(studentId: string | null, newName: string | null) {
+    setBusy(true);
+    const { error } = await supabase.rpc("teacher_add_student", {
+      _course_id: courseId,
+      _student_id: studentId,
+      _new_name: newName,
+    } as unknown as { _course_id: string; _student_id: string; _new_name: string });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Đã thêm sinh viên vào lớp");
+    setResults([]);
+    setQ("");
+    onChange();
+  }
+
+  async function remove(studentId: string) {
+    const { error } = await supabase.from("enrollments").delete().eq("course_id", courseId).eq("student_id", studentId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Đã gỡ sinh viên khỏi lớp");
+    onChange();
+  }
+
   return (
-    <GlassPanel>
-      <SectionTitle title={`Sinh viên trong lớp (${students.length})`} icon={<Users className="h-4 w-4" />} />
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {students.map((s) => (
-          <li key={s.student_id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200">
-            {s.student?.name ?? "Sinh viên"}
-          </li>
-        ))}
-      </ul>
-    </GlassPanel>
+    <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <GlassPanel>
+        <div className="flex items-center justify-between gap-2">
+          <SectionTitle title={`Sinh viên trong lớp (${students.length})`} icon={<Users className="h-4 w-4" />} />
+          <button
+            onClick={() =>
+              downloadCsv(
+                `danh-sach-lop-${courseId.slice(0, 8)}`,
+                students.map((s) => ({ "Sinh viên": s.student?.name ?? "", "Mã sinh viên": s.student_id })),
+              )
+            }
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10"
+          >
+            <Download className="h-3.5 w-3.5" /> CSV
+          </button>
+        </div>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {students.map((s) => (
+            <li
+              key={s.student_id}
+              className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200"
+            >
+              {s.student?.name ?? "Sinh viên"}
+              <button
+                onClick={() => remove(s.student_id)}
+                className="rounded-lg p-1 text-slate-400 transition hover:text-destructive"
+                aria-label="Gỡ khỏi lớp"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+          {students.length === 0 ? <li className="text-sm text-slate-400">Chưa có sinh viên nào.</li> : null}
+        </ul>
+      </GlassPanel>
+
+      <GlassPanel>
+        <SectionTitle title="Thêm sinh viên" subtitle="Tìm sinh viên có sẵn hoặc tạo hồ sơ mới" icon={<UserPlus className="h-4 w-4" />} />
+        <div className="flex gap-2">
+          <input
+            className={inputCls}
+            placeholder="Tên sinh viên"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") search();
+            }}
+          />
+          <button onClick={search} className="rounded-xl bg-white/10 px-4 text-sm text-slate-100">
+            Tìm
+          </button>
+        </div>
+        <ul className="mt-3 space-y-2">
+          {results.map((r) => (
+            <li
+              key={r.id}
+              className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200"
+            >
+              {r.name}
+              <button
+                disabled={busy}
+                onClick={() => add(r.id, null)}
+                className="rounded-lg border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10 disabled:opacity-50"
+              >
+                Thêm
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button
+          disabled={busy || !q.trim()}
+          onClick={() => add(null, q.trim())}
+          className="mt-3 w-full rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-sm font-semibold text-slate-50 disabled:opacity-50"
+        >
+          Tạo hồ sơ mới "{q.trim() || "…"}" và thêm vào lớp
+        </button>
+      </GlassPanel>
+    </div>
   );
 }
