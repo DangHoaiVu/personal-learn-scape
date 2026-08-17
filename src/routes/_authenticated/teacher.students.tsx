@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Search, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { Download, Search, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { GlassPanel, Loading, SectionTitle, StatCard } from "@/components/app/glass";
 import { supabase } from "@/integrations/supabase/client";
 import { useAttempts, useTeachingCourses } from "@/lib/queries";
+import { downloadCsv } from "@/lib/csv";
 
 export const Route = createFileRoute("/_authenticated/teacher/students")({
   head: () => ({
@@ -111,6 +112,24 @@ function TeacherStudents() {
               </option>
             ))}
           </select>
+          <button
+            onClick={() =>
+              downloadCsv(
+                `sinh-vien-${new Date().toISOString().slice(0, 10)}`,
+                rows.map((s) => ({
+                  "Sinh viên": s.name,
+                  "Số khóa": s.courses.size,
+                  "Lượt kiểm tra": s.attempts,
+                  "Điểm TB": s.avg != null ? s.avg.toFixed(2) : "",
+                  "Xu hướng": s.trend.toFixed(1),
+                  "Hoạt động cuối": s.last ? new Date(s.last).toLocaleDateString("vi-VN") : "",
+                })),
+              )
+            }
+            className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+          >
+            <Download className="h-4 w-4" /> Xuất CSV
+          </button>
         </div>
 
         <div className="mt-4 overflow-x-auto">
