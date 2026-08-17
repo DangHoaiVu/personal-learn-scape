@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Brain, LineChart, ShieldAlert, Sparkles, Target, GraduationCap } from "lucide-react";
 import { GlassPanel, LiquidPanel } from "@/components/app/glass";
-import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -49,16 +47,6 @@ const features = [
 ];
 
 function Landing() {
-  const [signedIn, setSignedIn] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
-      setSignedIn(!!session),
-    );
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
   return (
     <main className="relative min-h-screen px-4 py-10 sm:px-8">
       <div className="mx-auto max-w-6xl">
@@ -68,10 +56,10 @@ function Landing() {
             <span className="font-semibold tracking-tight">EduSense</span>
           </div>
           <Link
-            to={signedIn ? "/app" : "/auth"}
+            to="/auth"
             className="rounded-full border border-white/20 bg-white/10 px-5 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/20"
           >
-            {signedIn ? "Vào hệ thống" : "Đăng nhập"}
+            Đăng nhập
           </Link>
         </LiquidPanel>
 
