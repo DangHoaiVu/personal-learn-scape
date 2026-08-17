@@ -597,17 +597,135 @@ function QuizzesTab({
   );
 }
 
-function StudentsTab({ students }: { students: { student_id: string; student: { id: string; name: string } | null }[] }) {
+function StudentsTab({
+  courseId,
+  students,
+  onChange,
+}: {
+  courseId: string;
+  students: { student_id: string; student: { id: string; name: string } | null }[];
+  onChange: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<{ id: string; name: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  async function search() {
+    const { data, error } = await supabase.rpc("search_students", { _q: q.trim() });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const enrolled = new Set(students.map((s) => s.student_id));
+    setResults(((data ?? []) as { id: string; name: string }[]).filter((s) => !enrolled.has(s.id)));
+  }
+
+  async function add(studentId: string | null, newName: string | null) {
+    setBusy(true);
+    const { error } = await supabase.rpc("teacher_add_student", {
+      _course_id: courseId,
+      _student_id: studentId,
+      _new_name: newName,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Đã thêm sinh viên vào lớp");
+    setResults([]);
+    setQ("");
+    onChange();
+  }
+
+  async function remove(studentId: string) {
+    const { error } = await supabase.from("enrollments").delete().eq("course_id", courseId).eq("student_id", studentId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Đã gỡ sinh viên khỏi lớp");
+    onChange();
+  }
+
   return (
-    <GlassPanel>
-      <SectionTitle title={`Sinh viên trong lớp (${students.length})`} icon={<Users className="h-4 w-4" />} />
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {students.map((s) => (
-          <li key={s.student_id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200">
-            {s.student?.name ?? "Sinh viên"}
-          </li>
-        ))}
-      </ul>
-    </GlassPanel>
+    <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <GlassPanel>
+        <div className="flex items-center justify-between gap-2">
+          <SectionTitle title={`Sinh viên trong lớp (${students.length})`} icon={<Users className="h-4 w-4" />} />
+          <button
+            onClick={() =>
+              downloadCsv(
+                `danh-sach-lop-${courseId.slice(0, 8)}`,
+                students.map((s) => ({ "Sinh viên": s.student?.name ?? "", "Mã sinh viên": s.student_id })),
+              )
+            }
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10"
+          >
+            <Download className="h-3.5 w-3.5" /> CSV
+          </button>
+        </div>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {students.map((s) => (
+            <li
+              key={s.student_id}
+              className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200"
+            >
+              {s.student?.name ?? "Sinh viên"}
+              <button
+                onClick={() => remove(s.student_id)}
+                className="rounded-lg p-1 text-slate-400 transition hover:text-destructive"
+                aria-label="Gỡ khỏi lớp"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+          {students.length === 0 ? <li className="text-sm text-slate-400">Chưa có sinh viên nào.</li> : null}
+        </ul>
+      </GlassPanel>
+
+      <GlassPanel>
+        <SectionTitle title="Thêm sinh viên" subtitle="Tìm sinh viên có sẵn hoặc tạo hồ sơ mới" icon={<UserPlus className="h-4 w-4" />} />
+        <div className="flex gap-2">
+          <input
+            className={inputCls}
+            placeholder="Tên sinh viên"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") search();
+            }}
+          />
+          <button onClick={search} className="rounded-xl bg-white/10 px-4 text-sm text-slate-100">
+            Tìm
+          </button>
+        </div>
+        <ul className="mt-3 space-y-2">
+          {results.map((r) => (
+            <li
+              key={r.id}
+              className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200"
+            >
+              {r.name}
+              <button
+                disabled={busy}
+                onClick={() => add(r.id, null)}
+                className="rounded-lg border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10 disabled:opacity-50"
+              >
+                Thêm
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button
+          disabled={busy || !q.trim()}
+          onClick={() => add(null, q.trim())}
+          className="mt-3 w-full rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-sm font-semibold text-slate-50 disabled:opacity-50"
+        >
+          Tạo hồ sơ mới "{q.trim() || "…"}" và thêm vào lớp
+        </button>
+      </GlassPanel>
+    </div>
   );
 }
