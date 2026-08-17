@@ -34,7 +34,7 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -43,6 +43,17 @@ function AuthPage() {
           },
         });
         if (error) throw error;
+        // Nếu chưa có session (email cần xác nhận), thử đăng nhập ngay.
+        if (!signUpData.session) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (signInError) {
+            toast.success("Hãy kiểm tra email để xác nhận tài khoản.");
+            return;
+          }
+        }
         const { error: rpcError } = await supabase.rpc("bootstrap_demo", {
           _name: name || email.split("@")[0] || "Người dùng",
           _role: role,
