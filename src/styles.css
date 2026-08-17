@@ -174,3 +174,73 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- Light theme (toggle) ---------- */
+
+html.theme-light {
+  color-scheme: light;
+  --ink: oklch(0.97 0.008 250);
+  --background: oklch(0.97 0.008 250);
+  --foreground: oklch(0.25 0.03 265);
+  --card: oklch(1 0 0 / 70%);
+  --card-foreground: oklch(0.25 0.03 265);
+  --popover: oklch(0.99 0.005 250 / 98%);
+  --popover-foreground: oklch(0.25 0.03 265);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.2 0.03 265 / 8%);
+  --secondary-foreground: oklch(0.25 0.03 265);
+  --muted: oklch(0.2 0.03 265 / 6%);
+  --muted-foreground: oklch(0.45 0.02 258);
+  --border: oklch(0.25 0.03 265 / 14%);
+  --input: oklch(0.25 0.03 265 / 10%);
+}
+
+html.theme-light body {
+  background-color: var(--color-ink);
+  color: var(--color-foreground);
+}
+
+/* Remap the dark-tuned glass utilities for light surfaces */
+html.theme-light .glass-panel,
+html.theme-light .liquid-panel {
+  border-color: oklch(0.25 0.03 265 / 12%);
+  background-color: oklch(1 0 0 / 62%);
+  box-shadow:
+    0 24px 60px -26px oklch(0.35 0.05 265 / 28%),
+    inset 0 1px 0 0 oklch(1 0 0 / 70%);
+}
+
+html.theme-light .text-slate-50,
+html.theme-light .text-slate-100,
+html.theme-light .text-slate-200 {
+  color: oklch(0.26 0.03 265);
+}
+html.theme-light .text-slate-300 {
+  color: oklch(0.38 0.025 262);
+}
+html.theme-light .text-slate-400 {
+  color: oklch(0.48 0.02 260);
+}
+html.theme-light .text-slate-500 {
+  color: oklch(0.56 0.02 258);
+}
+html.theme-light .bg-white\/5,
+html.theme-light .bg-white\/\[0\.03\] {
+  background-color: oklch(0.25 0.03 265 / 5%);
+}
+html.theme-light .bg-white\/10 {
+  background-color: oklch(0.25 0.03 265 / 9%);
+}
+html.theme-light .border-white\/10 {
+  border-color: oklch(0.25 0.03 265 / 10%);
+}
+html.theme-light .border-white\/15 {
+  border-color: oklch(0.25 0.03 265 / 15%);
+}
+html.theme-light .divide-white\/10 > * + * {
+  border-color: oklch(0.25 0.03 265 / 12%);
+}
+html.theme-light .bg-gradient-to-r.from-aurora-blue,
+html.theme-light .text-slate-50.bg-gradient-to-r {
+  color: oklch(0.99 0 0);
+}
