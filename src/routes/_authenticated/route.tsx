@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/session";
 import { LiquidPanel, Loading } from "@/components/app/glass";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -110,6 +111,7 @@ function Shell() {
 
             <div className="flex items-center gap-2">
               <span className="hidden text-sm text-slate-300 sm:inline">{profile.name}</span>
+              <ThemeToggle />
               <button
                 onClick={signOut}
                 aria-label="Đăng xuất"
