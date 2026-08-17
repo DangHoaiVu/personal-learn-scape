@@ -626,7 +626,7 @@ function StudentsTab({
       _course_id: courseId,
       _student_id: studentId,
       _new_name: newName,
-    });
+    } as unknown as { _course_id: string; _student_id: string; _new_name: string });
     setBusy(false);
     if (error) {
       toast.error(error.message);
