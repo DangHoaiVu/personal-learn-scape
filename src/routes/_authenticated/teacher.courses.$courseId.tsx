@@ -1,11 +1,24 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, ClipboardList, FileCheck2, Plus, Trash2, Users } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardList,
+  Download,
+  Eye,
+  EyeOff,
+  FileCheck2,
+  Pencil,
+  Plus,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { GlassPanel, Loading, SectionTitle } from "@/components/app/glass";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { downloadCsv } from "@/lib/csv";
 
 export const Route = createFileRoute("/_authenticated/teacher/courses/$courseId")({
   head: () => ({
@@ -34,10 +47,10 @@ function ManageCourse() {
     queryKey: ["manage-course", courseId],
     queryFn: async () => {
       const [course, lessons, assignments, quizzes, enrollments, submissions] = await Promise.all([
-        supabase.from("courses").select("id,title,description").eq("id", courseId).maybeSingle(),
+        supabase.from("courses").select("id,title,description,visible").eq("id", courseId).maybeSingle(),
         supabase.from("lessons").select("id,title,content,order").eq("course_id", courseId).order("order"),
         supabase.from("assignments").select("id,title,description,due_date").eq("course_id", courseId),
-        supabase.from("quizzes").select("id,title").eq("course_id", courseId).order("created_at"),
+        supabase.from("quizzes").select("id,title,visible").eq("course_id", courseId).order("created_at"),
         supabase.from("enrollments").select("student_id,student:profiles(id,name)").eq("course_id", courseId),
         supabase.from("submissions").select("id,assignment_id,student_id,content,grade,feedback"),
       ]);
@@ -49,7 +62,7 @@ function ManageCourse() {
         course: course.data,
         lessons: lessons.data ?? [],
         assignments: assignments.data ?? [],
-        quizzes: quizzes.data ?? [],
+        quizzes: (quizzes.data ?? []) as { id: string; title: string; visible: boolean }[],
         questions: (questions.data ?? []) as { id: string; quiz_id: string; text: string; topic_tag: string }[],
         enrollments: (enrollments.data ?? []) as unknown as {
           student_id: string;
@@ -78,10 +91,10 @@ function ManageCourse() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-100">{data.course?.title}</h1>
-        <p className="text-sm text-slate-400">{data.course?.description}</p>
-      </div>
+      <CourseHeader
+        course={data.course as { id: string; title: string; description: string | null; visible: boolean }}
+        onChange={invalidate}
+      />
 
       <div className="flex flex-wrap gap-2">
         {tabs.map((t) => (
@@ -114,8 +127,111 @@ function ManageCourse() {
       {tab === "quizzes" ? (
         <QuizzesTab courseId={courseId} quizzes={data.quizzes} questions={data.questions} onChange={invalidate} />
       ) : null}
-      {tab === "students" ? <StudentsTab students={data.enrollments} /> : null}
+      {tab === "students" ? (
+        <StudentsTab courseId={courseId} students={data.enrollments} onChange={invalidate} />
+      ) : null}
     </div>
+  );
+}
+
+function CourseHeader({
+  course,
+  onChange,
+}: {
+  course: { id: string; title: string; description: string | null; visible: boolean } | null;
+  onChange: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(course?.title ?? "");
+  const [description, setDescription] = useState(course?.description ?? "");
+
+  if (!course) return null;
+
+  async function save() {
+    if (!course) return;
+    if (!title.trim()) {
+      toast.error("Nhập tên khóa học");
+      return;
+    }
+    const { error } = await supabase
+      .from("courses")
+      .update({ title: title.trim(), description: description.trim() || null })
+      .eq("id", course.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setEditing(false);
+    toast.success("Đã cập nhật khóa học");
+    onChange();
+  }
+
+  async function toggleVisible() {
+    if (!course) return;
+    const { error } = await supabase.from("courses").update({ visible: !course.visible }).eq("id", course.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(course.visible ? "Đã ẩn khỏi danh mục đăng ký" : "Đã mở cho sinh viên đăng ký");
+    onChange();
+  }
+
+  return (
+    <GlassPanel className="p-4">
+      {editing ? (
+        <div className="space-y-3">
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tên khóa học" />
+          <textarea
+            rows={2}
+            className={inputCls}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Mô tả"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={save}
+              className="rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-sm font-semibold text-slate-50"
+            >
+              Lưu
+            </button>
+            <button
+              onClick={() => {
+                setEditing(false);
+                setTitle(course.title);
+                setDescription(course.description ?? "");
+              }}
+              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200"
+            >
+              Hủy
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-100">{course.title}</h1>
+            <p className="text-sm text-slate-400">{course.description}</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={toggleVisible}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+            >
+              {course.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              {course.visible ? "Đang mở đăng ký" : "Đang ẩn"}
+            </button>
+            <button
+              onClick={() => setEditing(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+            >
+              <Pencil className="h-4 w-4" /> Sửa
+            </button>
+          </div>
+        </div>
+      )}
+    </GlassPanel>
   );
 }
 
