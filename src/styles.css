@@ -108,40 +108,149 @@
 
 @utility glass-panel {
   position: relative;
+  isolation: isolate;
   border-radius: var(--radius-3xl);
-  border: 1px solid oklch(1 0 0 / 15%);
-  background-color: oklch(1 0 0 / 6%);
-  backdrop-filter: blur(28px) saturate(140%);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  border: 1px solid oklch(1 0 0 / 14%);
+  background-image:
+    linear-gradient(
+      160deg,
+      oklch(1 0 0 / 11%) 0%,
+      oklch(1 0 0 / 4%) 42%,
+      oklch(1 0 0 / 7%) 100%
+    );
+  background-color: oklch(1 0 0 / 4%);
+  backdrop-filter: blur(26px) saturate(180%) brightness(1.06);
   box-shadow:
-    0 24px 60px -20px oklch(0.08 0.03 265 / 70%),
-    inset 0 1px 0 0 oklch(1 0 0 / 14%);
+    0 24px 60px -22px oklch(0.08 0.03 265 / 70%),
+    0 2px 10px -4px oklch(0.08 0.03 265 / 45%),
+    inset 0 1px 0 0 oklch(1 0 0 / 22%),
+    inset 0 -1px 0 0 oklch(1 0 0 / 7%),
+    inset 1px 0 0 0 oklch(1 0 0 / 8%),
+    inset -1px 0 0 0 oklch(1 0 0 / 8%);
+  transition:
+    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.4s ease;
 }
 
+/* Specular sheen + pointer-tracked light spot (Apple-style highlight) */
 @utility glass-sheen {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      22rem 16rem at var(--glass-mx, 50%) var(--glass-my, 0%),
+      oklch(1 0 0 / 14%) 0%,
+      oklch(1 0 0 / 5%) 38%,
+      transparent 72%
+    ),
+    linear-gradient(
+      145deg,
+      oklch(1 0 0 / 15%) 0%,
+      oklch(1 0 0 / 2%) 36%,
+      transparent 60%
+    );
+  transition: background-position 0.2s ease;
+}
+
+/* Thin refracted rim, mimicking the light bending at a glass edge */
+@utility glass-sheen-rim {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
   background: linear-gradient(
-    145deg,
-    oklch(1 0 0 / 16%) 0%,
-    oklch(1 0 0 / 3%) 34%,
-    transparent 62%
+    140deg,
+    oklch(1 0 0 / 55%) 0%,
+    oklch(1 0 0 / 6%) 26%,
+    transparent 48%,
+    oklch(1 0 0 / 10%) 74%,
+    oklch(1 0 0 / 42%) 100%
   );
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  opacity: 0.85;
 }
 
 @utility liquid-glass {
   position: relative;
+  isolation: isolate;
   border-radius: var(--radius-3xl);
-  border: 1px solid oklch(1 0 0 / 22%);
-  background-color: oklch(1 0 0 / 8%);
-  backdrop-filter: url(#liquid-glass-filter) blur(14px) saturate(170%);
-  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  border: 1px solid oklch(1 0 0 / 20%);
+  background-image: linear-gradient(
+    155deg,
+    oklch(1 0 0 / 13%) 0%,
+    oklch(1 0 0 / 5%) 45%,
+    oklch(1 0 0 / 9%) 100%
+  );
+  background-color: oklch(1 0 0 / 5%);
+  backdrop-filter: blur(20px) saturate(200%) brightness(1.1);
   box-shadow:
-    0 30px 70px -24px oklch(0.08 0.03 265 / 80%),
-    inset 0 1px 0 0 oklch(1 0 0 / 26%),
-    inset 0 -1px 0 0 oklch(1 0 0 / 10%);
+    0 34px 80px -28px oklch(0.08 0.03 265 / 82%),
+    0 3px 14px -6px oklch(0.08 0.03 265 / 55%),
+    inset 0 1px 0 0 oklch(1 0 0 / 34%),
+    inset 0 -1px 0 0 oklch(1 0 0 / 10%),
+    inset 1px 0 0 0 oklch(1 0 0 / 12%),
+    inset -1px 0 0 0 oklch(1 0 0 / 12%);
+  transition:
+    box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Edge-only lensing layer: distorts what's behind, only near the border */
+@utility liquid-lens {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  backdrop-filter: url(#liquid-glass-filter);
+  mask: radial-gradient(
+    118% 118% at 50% 50%,
+    transparent 58%,
+    #000 88%
+  );
+  opacity: 0.9;
+}
+
+/* Interactive glass: lifts and brightens on hover, compresses on press */
+@utility liquid-interactive {
+  cursor: pointer;
+  will-change: transform;
+}
+
+.liquid-interactive:hover {
+  transform: translate3d(0, -2px, 0);
+  box-shadow:
+    0 40px 90px -28px oklch(0.08 0.03 265 / 85%),
+    inset 0 1px 0 0 oklch(1 0 0 / 46%),
+    inset 0 -1px 0 0 oklch(1 0 0 / 14%),
+    inset 1px 0 0 0 oklch(1 0 0 / 16%),
+    inset -1px 0 0 0 oklch(1 0 0 / 16%);
+}
+
+.liquid-interactive:active {
+  transform: translate3d(0, 0, 0) scale(0.985);
+  transition-duration: 0.12s;
+}
+
+/* Pill-shaped glass control (nav bars, toolbars, floating buttons) */
+@utility liquid-pill {
+  position: relative;
+  isolation: isolate;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 20%);
+  background-color: oklch(1 0 0 / 6%);
+  backdrop-filter: blur(22px) saturate(190%) brightness(1.08);
+  box-shadow:
+    0 14px 34px -14px oklch(0.08 0.03 265 / 70%),
+    inset 0 1px 0 0 oklch(1 0 0 / 32%),
+    inset 0 -1px 0 0 oklch(1 0 0 / 8%);
 }
 
 @utility stat-num {
