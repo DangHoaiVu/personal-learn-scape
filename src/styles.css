@@ -278,6 +278,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .aurora-a, .aurora-b, .aurora-c { animation: none; }
+  .liquid-interactive:hover,
+  .liquid-interactive:active { transform: none; }
+  .liquid-lens { display: none; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
@@ -311,12 +314,40 @@ html.theme-light body {
 
 /* Remap the dark-tuned glass utilities for light surfaces */
 html.theme-light .glass-panel,
-html.theme-light .liquid-panel {
+html.theme-light .liquid-glass,
+html.theme-light .liquid-pill {
   border-color: oklch(0.25 0.03 265 / 12%);
   background-color: oklch(1 0 0 / 62%);
+  background-image: linear-gradient(
+    155deg,
+    oklch(1 0 0 / 70%) 0%,
+    oklch(1 0 0 / 45%) 48%,
+    oklch(1 0 0 / 62%) 100%
+  );
   box-shadow:
     0 24px 60px -26px oklch(0.35 0.05 265 / 28%),
     inset 0 1px 0 0 oklch(1 0 0 / 70%);
+}
+
+html.theme-light .glass-sheen {
+  background:
+    radial-gradient(
+      22rem 16rem at var(--glass-mx, 50%) var(--glass-my, 0%),
+      oklch(1 0 0 / 60%) 0%,
+      oklch(1 0 0 / 20%) 40%,
+      transparent 72%
+    );
+}
+
+html.theme-light .glass-sheen-rim {
+  background: linear-gradient(
+    140deg,
+    oklch(1 0 0 / 90%) 0%,
+    oklch(0.25 0.03 265 / 6%) 30%,
+    transparent 52%,
+    oklch(1 0 0 / 60%) 100%
+  );
+  opacity: 0.7;
 }
 
 html.theme-light .text-slate-50,
