@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/session";
-import { LiquidPanel, Loading } from "@/components/app/glass";
+import { LiquidBar, LiquidPanel, Loading } from "@/components/app/glass";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -81,7 +81,7 @@ function Shell() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-5">
-        <LiquidPanel className="px-4 py-3">
+        <LiquidBar className={cn("px-4 py-3", open ? "rounded-3xl" : "")}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-slate-100">
               <Brain className="h-5 w-5 text-aurora-blue" />
@@ -144,7 +144,7 @@ function Shell() {
               ))}
             </nav>
           ) : null}
-        </LiquidPanel>
+        </LiquidBar>
       </header>
 
       <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8">
