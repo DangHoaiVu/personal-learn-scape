@@ -100,7 +100,7 @@ function BrowseCourses() {
           {list.map((c) => {
             const joined = data.enrolled.has(c.id);
             return (
-              <GlassPanel key={c.id} className="flex flex-col justify-between">
+              <GlassPanel interactive key={c.id} className="flex flex-col justify-between">
                 <div>
                   <SectionTitle title={c.title} icon={<BookOpen className="h-4 w-4" />} />
                   <p className="line-clamp-3 text-sm text-slate-400">{c.description}</p>

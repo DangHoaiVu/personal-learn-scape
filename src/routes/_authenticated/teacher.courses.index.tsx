@@ -78,7 +78,7 @@ function TeacherCourses() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((c) => (
-          <GlassPanel key={c.id}>
+          <GlassPanel interactive key={c.id}>
             <div className="flex items-start justify-between">
               <BookOpen className="h-4 w-4 text-aurora-blue" />
               <button
