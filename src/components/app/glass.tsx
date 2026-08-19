@@ -1,16 +1,16 @@
-import type { ReactNode } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function LiquidGlassDefs() {
   return (
     <svg aria-hidden className="pointer-events-none fixed h-0 w-0">
       <filter id="liquid-glass-filter" x="-20%" y="-20%" width="140%" height="140%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise" />
-        <feGaussianBlur in="noise" stdDeviation="6" result="softNoise" />
+        <feTurbulence type="fractalNoise" baseFrequency="0.02 0.024" numOctaves="1" seed="11" result="noise" />
+        <feGaussianBlur in="noise" stdDeviation="2.5" result="softNoise" />
         <feDisplacementMap
           in="SourceGraphic"
           in2="softNoise"
-          scale="42"
+          scale="9"
           xChannelSelector="R"
           yChannelSelector="G"
         />
@@ -30,27 +30,76 @@ export function AuroraBackground() {
   );
 }
 
+function trackPointer(e: ReactPointerEvent<HTMLDivElement>) {
+  const el = e.currentTarget;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty("--glass-mx", `${((e.clientX - r.left) / r.width) * 100}%`);
+  el.style.setProperty("--glass-my", `${((e.clientY - r.top) / r.height) * 100}%`);
+}
+
+function resetPointer(e: ReactPointerEvent<HTMLDivElement>) {
+  e.currentTarget.style.removeProperty("--glass-mx");
+  e.currentTarget.style.removeProperty("--glass-my");
+}
+
 export function GlassPanel({
   children,
   className,
+  interactive,
   as: _as,
 }: {
   children?: ReactNode;
   className?: string;
+  interactive?: boolean;
   as?: string;
 }) {
   return (
-    <div className={cn("glass-panel p-5", className)}>
+    <div
+      onPointerMove={trackPointer}
+      onPointerLeave={resetPointer}
+      className={cn("glass-panel p-5", interactive && "liquid-interactive", className)}
+    >
       <span className="glass-sheen" />
+      <span className="glass-sheen-rim" />
       <div className="relative">{children}</div>
     </div>
   );
 }
 
-export function LiquidPanel({ children, className }: { children?: ReactNode; className?: string }) {
+export function LiquidPanel({
+  children,
+  className,
+  interactive,
+  lens = true,
+}: {
+  children?: ReactNode;
+  className?: string;
+  interactive?: boolean;
+  lens?: boolean;
+}) {
   return (
-    <div className={cn("liquid-glass p-5", className)}>
+    <div
+      onPointerMove={trackPointer}
+      onPointerLeave={resetPointer}
+      className={cn("liquid-glass p-5", interactive && "liquid-interactive", className)}
+    >
+      {lens ? <span className="liquid-lens" /> : null}
       <span className="glass-sheen" />
+      <span className="glass-sheen-rim" />
+      <div className="relative">{children}</div>
+    </div>
+  );
+}
+
+export function LiquidBar({ children, className }: { children?: ReactNode; className?: string }) {
+  return (
+    <div
+      onPointerMove={trackPointer}
+      onPointerLeave={resetPointer}
+      className={cn("liquid-pill px-4 py-3", className)}
+    >
+      <span className="glass-sheen" />
+      <span className="glass-sheen-rim" />
       <div className="relative">{children}</div>
     </div>
   );

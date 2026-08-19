@@ -71,7 +71,7 @@ function StudentCourses() {
             const totalQuizzes = counts?.quizzes.filter((q) => q.course_id === course.id).length ?? 0;
             const pct = totalQuizzes ? Math.round((done / totalQuizzes) * 100) : 0;
             return (
-              <GlassPanel key={course.id} className="flex flex-col">
+              <GlassPanel interactive key={course.id} className="flex flex-col">
                 <div className="flex items-start gap-3">
                   <span className="rounded-xl border border-white/15 bg-white/10 p-2 text-slate-200">
                     <BookOpen className="h-4 w-4" />
