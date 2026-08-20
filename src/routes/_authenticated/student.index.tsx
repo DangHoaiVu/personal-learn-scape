@@ -9,19 +9,33 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { AlertTriangle, ArrowRight, Lightbulb, TrendingDown, TrendingUp, Trophy } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Lightbulb,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+} from "lucide-react";
 import { GlassPanel, Loading, SectionTitle, StatCard } from "@/components/app/glass";
 import { useProfile } from "@/lib/session";
 import { useAttempts, useMyCourses, useTopicStats } from "@/lib/queries";
 import { tooltipStyle } from "@/components/app/chart-theme";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/student/")({
   head: () => ({
     meta: [
       { title: "Tổng quan học tập · EduSense" },
-      { name: "description", content: "Theo dõi tiến độ mọi môn học, xu hướng điểm và gợi ý ôn tập cá nhân hóa." },
+      {
+        name: "description",
+        content: "Theo dõi tiến độ mọi môn học, xu hướng điểm và gợi ý ôn tập cá nhân hóa.",
+      },
       { property: "og:title", content: "Tổng quan học tập · EduSense" },
-      { property: "og:description", content: "Dashboard đa môn với cảnh báo môn đang tụt và gợi ý ôn tập." },
+      {
+        property: "og:description",
+        content: "Dashboard đa môn với cảnh báo môn đang tụt và gợi ý ôn tập.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -61,13 +75,20 @@ function StudentDashboard() {
       }));
       const sorted = [...averages].sort((a, b) => b.avg - a.avg);
       const rank = sorted.findIndex((s) => s.sid === profile?.id);
-      const percentile = rank >= 0 && sorted.length ? Math.max(1, Math.round(((rank + 1) / sorted.length) * 100)) : null;
+      const percentile =
+        rank >= 0 && sorted.length
+          ? Math.max(1, Math.round(((rank + 1) / sorted.length) * 100))
+          : null;
       return {
         course: c,
         avg,
         trend,
         percentile,
-        series: mine.map((a, i) => ({ i: i + 1, score: Number(a.score), label: a.quiz?.title ?? "" })),
+        series: mine.map((a, i) => ({
+          i: i + 1,
+          score: Number(a.score),
+          label: a.quiz?.title ?? "",
+        })),
       };
     });
   }, [courses, myAttempts, attempts, profile?.id]);
@@ -76,7 +97,8 @@ function StudentDashboard() {
     ? myAttempts.reduce((s, a) => s + Number(a.score), 0) / myAttempts.length
     : 0;
   const bestPercentile = perCourse.reduce<number | null>(
-    (best, c) => (c.percentile != null && (best == null || c.percentile < best) ? c.percentile : best),
+    (best, c) =>
+      c.percentile != null && (best == null || c.percentile < best) ? c.percentile : best,
     null,
   );
   const weakTopics = useMemo(
@@ -118,7 +140,11 @@ function StudentDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <SectionTitle title="Các môn học" subtitle="Xu hướng điểm quiz theo thời gian" icon={<Trophy className="h-4 w-4" />} />
+          <SectionTitle
+            title="Các môn học"
+            subtitle="Xu hướng điểm quiz theo thời gian"
+            icon={<Trophy className="h-4 w-4" />}
+          />
           {perCourse.map(({ course, avg, trend, percentile, series }) => (
             <GlassPanel key={course.id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -140,20 +166,29 @@ function StudentDashboard() {
                     {percentile ? <> · Top {percentile}% lớp</> : null}
                   </p>
                 </div>
-                <Link
-                  to="/student/courses/$courseId"
-                  params={{ courseId: course.id }}
-                  className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/15"
-                >
-                  Vào học <ArrowRight className="h-3 w-3" />
-                </Link>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/student/courses/$courseId" params={{ courseId: course.id }}>
+                    Vào học <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </Button>
               </div>
               <div className="mt-3 h-28">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={series}>
                     <CartesianGrid stroke="rgba(255,255,255,0.07)" vertical={false} />
-                    <XAxis dataKey="i" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 10]} tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} width={24} />
+                    <XAxis
+                      dataKey="i"
+                      tick={{ fill: "#94a3b8", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      domain={[0, 10]}
+                      tick={{ fill: "#94a3b8", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={24}
+                    />
                     <Tooltip {...tooltipStyle} />
                     <Line
                       type="monotone"
@@ -171,7 +206,11 @@ function StudentDashboard() {
 
         <div className="space-y-4">
           <GlassPanel>
-            <SectionTitle title="Gợi ý ôn tập" subtitle="Chủ đề yếu nhất của bạn" icon={<Lightbulb className="h-4 w-4" />} />
+            <SectionTitle
+              title="Gợi ý ôn tập"
+              subtitle="Chủ đề yếu nhất của bạn"
+              icon={<Lightbulb className="h-4 w-4" />}
+            />
             {weakTopics.length === 0 ? (
               <p className="text-sm text-slate-400">Chưa đủ dữ liệu để gợi ý.</p>
             ) : (
@@ -211,7 +250,8 @@ function StudentDashboard() {
                 {decliningCourses.map((c) => (
                   <li key={c.course.id}>
                     <span className="text-slate-100">{c.course.title}</span> — điểm giảm{" "}
-                    <span className="stat-num">{Math.abs(c.trend).toFixed(2)}</span> so với giai đoạn đầu.
+                    <span className="stat-num">{Math.abs(c.trend).toFixed(2)}</span> so với giai
+                    đoạn đầu.
                   </li>
                 ))}
               </ul>

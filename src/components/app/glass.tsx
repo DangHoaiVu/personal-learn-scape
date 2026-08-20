@@ -1,11 +1,18 @@
-import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useLiquidPointer } from "@/components/app/liquid";
 
 export function LiquidGlassDefs() {
   return (
     <svg aria-hidden className="pointer-events-none fixed h-0 w-0">
       <filter id="liquid-glass-filter" x="-20%" y="-20%" width="140%" height="140%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.02 0.024" numOctaves="1" seed="11" result="noise" />
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.02 0.024"
+          numOctaves="1"
+          seed="11"
+          result="noise"
+        />
         <feGaussianBlur in="noise" stdDeviation="2.5" result="softNoise" />
         <feDisplacementMap
           in="SourceGraphic"
@@ -30,18 +37,6 @@ export function AuroraBackground() {
   );
 }
 
-function trackPointer(e: ReactPointerEvent<HTMLDivElement>) {
-  const el = e.currentTarget;
-  const r = el.getBoundingClientRect();
-  el.style.setProperty("--glass-mx", `${((e.clientX - r.left) / r.width) * 100}%`);
-  el.style.setProperty("--glass-my", `${((e.clientY - r.top) / r.height) * 100}%`);
-}
-
-function resetPointer(e: ReactPointerEvent<HTMLDivElement>) {
-  e.currentTarget.style.removeProperty("--glass-mx");
-  e.currentTarget.style.removeProperty("--glass-my");
-}
-
 export function GlassPanel({
   children,
   className,
@@ -53,14 +48,14 @@ export function GlassPanel({
   interactive?: boolean;
   as?: string;
 }) {
+  const pointer = useLiquidPointer<HTMLDivElement>();
   return (
     <div
-      onPointerMove={trackPointer}
-      onPointerLeave={resetPointer}
+      {...pointer}
       className={cn("glass-panel p-5", interactive && "liquid-interactive", className)}
     >
-      <span className="glass-sheen" />
-      <span className="glass-sheen-rim" />
+      <span aria-hidden="true" className="glass-sheen" />
+      <span aria-hidden="true" className="glass-sheen-rim" />
       <div className="relative">{children}</div>
     </div>
   );
@@ -77,29 +72,26 @@ export function LiquidPanel({
   interactive?: boolean;
   lens?: boolean;
 }) {
+  const pointer = useLiquidPointer<HTMLDivElement>();
   return (
     <div
-      onPointerMove={trackPointer}
-      onPointerLeave={resetPointer}
+      {...pointer}
       className={cn("liquid-glass p-5", interactive && "liquid-interactive", className)}
     >
-      {lens ? <span className="liquid-lens" /> : null}
-      <span className="glass-sheen" />
-      <span className="glass-sheen-rim" />
+      {lens ? <span aria-hidden="true" className="liquid-lens" /> : null}
+      <span aria-hidden="true" className="glass-sheen" />
+      <span aria-hidden="true" className="glass-sheen-rim" />
       <div className="relative">{children}</div>
     </div>
   );
 }
 
 export function LiquidBar({ children, className }: { children?: ReactNode; className?: string }) {
+  const pointer = useLiquidPointer<HTMLDivElement>();
   return (
-    <div
-      onPointerMove={trackPointer}
-      onPointerLeave={resetPointer}
-      className={cn("liquid-pill px-4 py-3", className)}
-    >
-      <span className="glass-sheen" />
-      <span className="glass-sheen-rim" />
+    <div {...pointer} className={cn("liquid-pill px-4 py-3", className)}>
+      <span aria-hidden="true" className="glass-sheen" />
+      <span aria-hidden="true" className="glass-sheen-rim" />
       <div className="relative">{children}</div>
     </div>
   );
@@ -117,7 +109,9 @@ export function SectionTitle({
   return (
     <div className="mb-4 flex items-start gap-3">
       {icon ? (
-        <span className="mt-0.5 rounded-xl border border-white/15 bg-white/10 p-2 text-slate-200">{icon}</span>
+        <span className="mt-0.5 rounded-xl border border-white/15 bg-white/10 p-2 text-slate-200">
+          {icon}
+        </span>
       ) : null}
       <div>
         <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
@@ -156,7 +150,10 @@ export function StatCard({
 export function Loading({ label = "Đang tải dữ liệu…" }: { label?: string }) {
   return (
     <div className="flex items-center gap-3 py-16 text-sm text-slate-400">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/70" />
+      <span
+        aria-hidden="true"
+        className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/70"
+      />
       {label}
     </div>
   );

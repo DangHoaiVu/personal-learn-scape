@@ -4,16 +4,23 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Check, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { GlassPanel, Loading, SectionTitle } from "@/components/app/glass";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 import { useProfile } from "@/lib/session";
+import { LiquidButton } from "@/components/app/liquid";
 
 export const Route = createFileRoute("/_authenticated/student/browse")({
   head: () => ({
     meta: [
       { title: "Đăng ký khóa học · EduSense" },
-      { name: "description", content: "Duyệt các khóa học đang mở và tự đăng ký chỉ với một cú nhấp." },
+      {
+        name: "description",
+        content: "Duyệt các khóa học đang mở và tự đăng ký chỉ với một cú nhấp.",
+      },
       { property: "og:title", content: "Đăng ký khóa học · EduSense" },
-      { property: "og:description", content: "Khám phá khóa học mới phù hợp với hồ sơ năng lực của bạn." },
+      {
+        property: "og:description",
+        content: "Khám phá khóa học mới phù hợp với hồ sơ năng lực của bạn.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -32,17 +39,19 @@ function BrowseCourses() {
     enabled: Boolean(profile?.id),
     queryFn: async () => {
       const [courses, mine] = await Promise.all([
-        supabase.rpc("browse_open_courses", { _q: "" }),
-        supabase.from("enrollments").select("course_id").eq("student_id", profile!.id),
+        localDb.rpc("browse_open_courses", { _q: "" }),
+        localDb.from("enrollments").select("course_id").eq("student_id", profile!.id),
       ]);
-      const enrolled = new Set((mine.data ?? []).map((e) => e.course_id));
+      const enrolled = new Set(
+        (mine.data ?? []).map((enrollment: { course_id: string }) => enrollment.course_id),
+      );
       return {
-        courses: ((courses.data ?? []) as unknown as {
+        courses: (courses.data ?? []) as unknown as {
           id: string;
           title: string;
           description: string | null;
           teacher_name: string | null;
-        }[]),
+        }[],
         enrolled,
       };
     },
@@ -51,10 +60,15 @@ function BrowseCourses() {
   async function enroll(courseId: string) {
     if (!profile) return;
     setBusy(courseId);
-    const { error } = await supabase.from("enrollments").insert({ student_id: profile.id, course_id: courseId });
+    const { error } = await localDb
+      .from("enrollments")
+      .insert({ student_id: profile.id, course_id: courseId });
     setBusy(null);
-    if (error) { toast.error(error.message); return; }
-    await supabase.from("activity_logs").insert({
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    await localDb.from("activity_logs").insert({
       student_id: profile.id,
       course_id: courseId,
       action: "login",
@@ -100,19 +114,23 @@ function BrowseCourses() {
           {list.map((c) => {
             const joined = data.enrolled.has(c.id);
             return (
-              <GlassPanel interactive key={c.id} className="flex flex-col justify-between">
+              <GlassPanel key={c.id} className="flex flex-col justify-between">
                 <div>
                   <SectionTitle title={c.title} icon={<BookOpen className="h-4 w-4" />} />
                   <p className="line-clamp-3 text-sm text-slate-400">{c.description}</p>
-                  <p className="mt-3 text-xs text-slate-500">Giảng viên: {c.teacher_name ?? "Đang cập nhật"}</p>
+                  <p className="mt-3 text-xs text-slate-500">
+                    Giảng viên: {c.teacher_name ?? "Đang cập nhật"}
+                  </p>
                 </div>
-                <button
-                  disabled={joined || busy === c.id}
+                <LiquidButton
+                  disabled={joined}
+                  loading={busy === c.id}
                   onClick={() => enroll(c.id)}
+                  variant={joined ? "outline" : "default"}
                   className={
                     joined
-                      ? "mt-4 inline-flex items-center justify-center gap-2 rounded-full border border-[color:var(--success)]/40 bg-[color:var(--success)]/15 px-4 py-2 text-sm text-[color:var(--success)]"
-                      : "mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-sm font-semibold text-slate-50 disabled:opacity-60"
+                      ? "mt-4 border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]"
+                      : "mt-4"
                   }
                 >
                   {joined ? (
@@ -124,7 +142,7 @@ function BrowseCourses() {
                       <Sparkles className="h-4 w-4" /> {busy === c.id ? "Đang đăng ký…" : "Đăng ký"}
                     </>
                   )}
-                </button>
+                </LiquidButton>
               </GlassPanel>
             );
           })}

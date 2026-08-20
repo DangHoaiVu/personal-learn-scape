@@ -1,10 +1,18 @@
 import { useEffect, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 import { Target } from "lucide-react";
 import { GlassPanel, Loading, SectionTitle } from "@/components/app/glass";
 import { useMyCourses, useTopicStats } from "@/lib/queries";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 import { useProfile } from "@/lib/session";
 import { tooltipStyle } from "@/components/app/chart-theme";
 
@@ -12,9 +20,15 @@ export const Route = createFileRoute("/_authenticated/student/mastery")({
   head: () => ({
     meta: [
       { title: "Hồ sơ năng lực · EduSense" },
-      { name: "description", content: "Biểu đồ radar mức độ thành thạo theo từng chủ đề trong mỗi môn học." },
+      {
+        name: "description",
+        content: "Biểu đồ radar mức độ thành thạo theo từng chủ đề trong mỗi môn học.",
+      },
       { property: "og:title", content: "Hồ sơ năng lực · EduSense" },
-      { property: "og:description", content: "% thành thạo từng chủ đề tính từ toàn bộ câu hỏi đã làm." },
+      {
+        property: "og:description",
+        content: "% thành thạo từng chủ đề tính từ toàn bộ câu hỏi đã làm.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -32,7 +46,11 @@ function MasteryPage() {
       course: c,
       rows: topics
         .filter((t) => t.course_id === c.id)
-        .map((t) => ({ topic: t.topic_tag, pct: Math.round((t.correct / t.total) * 1000) / 10, total: t.total }))
+        .map((t) => ({
+          topic: t.topic_tag,
+          pct: Math.round((t.correct / t.total) * 1000) / 10,
+          total: t.total,
+        }))
         .sort((a, b) => a.pct - b.pct),
     }));
   }, [courses, topics]);
@@ -47,7 +65,9 @@ function MasteryPage() {
       mastery_pct: Math.round((t.correct / t.total) * 1000) / 10,
       updated_at: new Date().toISOString(),
     }));
-    void supabase.from("topic_mastery").upsert(payload, { onConflict: "student_id,course_id,topic_tag" });
+    void localDb
+      .from("topic_mastery")
+      .upsert(payload, { onConflict: "student_id,course_id,topic_tag" });
   }, [profile, topics]);
 
   if (isLoading) return <Loading />;
@@ -64,7 +84,11 @@ function MasteryPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {grouped.map(({ course, rows }) => (
           <GlassPanel key={course.id}>
-            <SectionTitle title={course.title} subtitle={`${rows.length} chủ đề`} icon={<Target className="h-4 w-4" />} />
+            <SectionTitle
+              title={course.title}
+              subtitle={`${rows.length} chủ đề`}
+              icon={<Target className="h-4 w-4" />}
+            />
             {rows.length === 0 ? (
               <p className="text-sm text-slate-400">Chưa có dữ liệu bài làm.</p>
             ) : (

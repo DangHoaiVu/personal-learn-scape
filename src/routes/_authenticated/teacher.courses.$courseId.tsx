@@ -16,15 +16,24 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassPanel, Loading, SectionTitle } from "@/components/app/glass";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 import { cn } from "@/lib/utils";
 import { downloadCsv } from "@/lib/csv";
+import {
+  LiquidButton,
+  LiquidIconButton,
+  LiquidSegmentedControl,
+  LiquidSegmentedItem,
+} from "@/components/app/liquid";
 
 export const Route = createFileRoute("/_authenticated/teacher/courses/$courseId")({
   head: () => ({
     meta: [
       { title: "Nội dung khóa học · EduSense" },
-      { name: "description", content: "Quản lý bài học, bài tập, ngân hàng câu hỏi và chấm điểm sinh viên." },
+      {
+        name: "description",
+        content: "Quản lý bài học, bài tập, ngân hàng câu hỏi và chấm điểm sinh viên.",
+      },
       { property: "og:title", content: "Nội dung khóa học · EduSense" },
       { property: "og:description", content: "Soạn nội dung và chấm bài trong một màn hình." },
       { property: "og:type", content: "website" },
@@ -47,23 +56,46 @@ function ManageCourse() {
     queryKey: ["manage-course", courseId],
     queryFn: async () => {
       const [course, lessons, assignments, quizzes, enrollments, submissions] = await Promise.all([
-        supabase.from("courses").select("id,title,description,visible").eq("id", courseId).maybeSingle(),
-        supabase.from("lessons").select("id,title,content,order").eq("course_id", courseId).order("order"),
-        supabase.from("assignments").select("id,title,description,due_date").eq("course_id", courseId),
-        supabase.from("quizzes").select("id,title,visible").eq("course_id", courseId).order("created_at"),
-        supabase.from("enrollments").select("student_id,student:profiles(id,name)").eq("course_id", courseId),
-        supabase.from("submissions").select("id,assignment_id,student_id,content,grade,feedback"),
+        localDb
+          .from("courses")
+          .select("id,title,description,visible")
+          .eq("id", courseId)
+          .maybeSingle(),
+        localDb
+          .from("lessons")
+          .select("id,title,content,order")
+          .eq("course_id", courseId)
+          .order("order"),
+        localDb
+          .from("assignments")
+          .select("id,title,description,due_date")
+          .eq("course_id", courseId),
+        localDb
+          .from("quizzes")
+          .select("id,title,visible")
+          .eq("course_id", courseId)
+          .order("created_at"),
+        localDb
+          .from("enrollments")
+          .select("student_id,student:profiles(id,name)")
+          .eq("course_id", courseId),
+        localDb.from("submissions").select("id,assignment_id,student_id,content,grade,feedback"),
       ]);
-      const quizIds = (quizzes.data ?? []).map((q) => q.id);
+      const quizIds = (quizzes.data ?? []).map((quiz: { id: string }) => quiz.id);
       const questions = quizIds.length
-        ? await supabase.from("questions").select("id,quiz_id,text,topic_tag").in("quiz_id", quizIds)
+        ? await localDb.from("questions").select("id,quiz_id,text,topic_tag").in("quiz_id", quizIds)
         : { data: [] };
       return {
         course: course.data,
         lessons: lessons.data ?? [],
         assignments: assignments.data ?? [],
         quizzes: (quizzes.data ?? []) as { id: string; title: string; visible: boolean }[],
-        questions: (questions.data ?? []) as { id: string; quiz_id: string; text: string; topic_tag: string }[],
+        questions: (questions.data ?? []) as {
+          id: string;
+          quiz_id: string;
+          text: string;
+          topic_tag: string;
+        }[],
         enrollments: (enrollments.data ?? []) as unknown as {
           student_id: string;
           student: { id: string; name: string } | null;
@@ -92,29 +124,36 @@ function ManageCourse() {
   return (
     <div className="space-y-5">
       <CourseHeader
-        course={data.course as { id: string; title: string; description: string | null; visible: boolean }}
+        course={
+          data.course as { id: string; title: string; description: string | null; visible: boolean }
+        }
         onChange={invalidate}
       />
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition",
-              tab === t.id
-                ? "border-aurora-blue/50 bg-aurora-blue/20 text-slate-100"
-                : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10",
-            )}
-          >
-            <t.icon className="h-4 w-4" />
-            {t.label}
-          </button>
-        ))}
+      <div className="max-w-full overflow-x-auto pb-1">
+        <LiquidSegmentedControl
+          value={tab}
+          aria-label="Nội dung khóa học"
+          className="w-max min-w-full rounded-2xl sm:min-w-0"
+        >
+          {tabs.map((t) => (
+            <LiquidSegmentedItem
+              key={t.id}
+              value={t.id}
+              onClick={() => setTab(t.id)}
+              aria-selected={tab === t.id}
+              className="flex-1 rounded-xl px-4 py-2 text-sm"
+            >
+              <t.icon className="h-4 w-4" />
+              {t.label}
+            </LiquidSegmentedItem>
+          ))}
+        </LiquidSegmentedControl>
       </div>
 
-      {tab === "lessons" ? <LessonsTab courseId={courseId} lessons={data.lessons} onChange={invalidate} /> : null}
+      {tab === "lessons" ? (
+        <LessonsTab courseId={courseId} lessons={data.lessons} onChange={invalidate} />
+      ) : null}
       {tab === "assignments" ? (
         <AssignmentsTab
           courseId={courseId}
@@ -125,7 +164,12 @@ function ManageCourse() {
         />
       ) : null}
       {tab === "quizzes" ? (
-        <QuizzesTab courseId={courseId} quizzes={data.quizzes} questions={data.questions} onChange={invalidate} />
+        <QuizzesTab
+          courseId={courseId}
+          quizzes={data.quizzes}
+          questions={data.questions}
+          onChange={invalidate}
+        />
       ) : null}
       {tab === "students" ? (
         <StudentsTab courseId={courseId} students={data.enrollments} onChange={invalidate} />
@@ -153,7 +197,7 @@ function CourseHeader({
       toast.error("Nhập tên khóa học");
       return;
     }
-    const { error } = await supabase
+    const { error } = await localDb
       .from("courses")
       .update({ title: title.trim(), description: description.trim() || null })
       .eq("id", course.id);
@@ -168,7 +212,10 @@ function CourseHeader({
 
   async function toggleVisible() {
     if (!course) return;
-    const { error } = await supabase.from("courses").update({ visible: !course.visible }).eq("id", course.id);
+    const { error } = await localDb
+      .from("courses")
+      .update({ visible: !course.visible })
+      .eq("id", course.id);
     if (error) {
       toast.error(error.message);
       return;
@@ -181,7 +228,12 @@ function CourseHeader({
     <GlassPanel className="p-4">
       {editing ? (
         <div className="space-y-3">
-          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tên khóa học" />
+          <input
+            className={inputCls}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Tên khóa học"
+          />
           <textarea
             rows={2}
             className={inputCls}
@@ -190,22 +242,17 @@ function CourseHeader({
             placeholder="Mô tả"
           />
           <div className="flex gap-2">
-            <button
-              onClick={save}
-              className="rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-sm font-semibold text-slate-50"
-            >
-              Lưu
-            </button>
-            <button
+            <LiquidButton onClick={save}>Lưu</LiquidButton>
+            <LiquidButton
               onClick={() => {
                 setEditing(false);
                 setTitle(course.title);
                 setDescription(course.description ?? "");
               }}
-              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200"
+              variant="outline"
             >
               Hủy
-            </button>
+            </LiquidButton>
           </div>
         </div>
       ) : (
@@ -215,19 +262,13 @@ function CourseHeader({
             <p className="text-sm text-slate-400">{course.description}</p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={toggleVisible}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
-            >
+            <LiquidButton onClick={toggleVisible} variant="outline">
               {course.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               {course.visible ? "Đang mở đăng ký" : "Đang ẩn"}
-            </button>
-            <button
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
-            >
+            </LiquidButton>
+            <LiquidButton onClick={() => setEditing(true)} variant="outline">
               <Pencil className="h-4 w-4" /> Sửa
-            </button>
+            </LiquidButton>
           </div>
         </div>
       )}
@@ -248,14 +289,20 @@ function LessonsTab({
   const [content, setContent] = useState("");
 
   async function add() {
-    if (!title.trim()) { toast.error("Nhập tiêu đề bài học"); return; }
-    const { error } = await supabase.from("lessons").insert({
+    if (!title.trim()) {
+      toast.error("Nhập tiêu đề bài học");
+      return;
+    }
+    const { error } = await localDb.from("lessons").insert({
       course_id: courseId,
       title: title.trim(),
       content: content.trim() || null,
       order: lessons.length + 1,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setTitle("");
     setContent("");
     onChange();
@@ -266,7 +313,12 @@ function LessonsTab({
       <GlassPanel>
         <SectionTitle title="Thêm bài học" icon={<Plus className="h-4 w-4" />} />
         <div className="space-y-3">
-          <input className={inputCls} placeholder="Tiêu đề" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input
+            className={inputCls}
+            placeholder="Tiêu đề"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
           <textarea
             rows={5}
             className={inputCls}
@@ -274,12 +326,7 @@ function LessonsTab({
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
-          <button
-            onClick={add}
-            className="rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-5 py-2 text-sm font-semibold text-slate-50"
-          >
-            Thêm
-          </button>
+          <LiquidButton onClick={add}>Thêm</LiquidButton>
         </div>
       </GlassPanel>
 
@@ -295,16 +342,18 @@ function LessonsTab({
                 <p className="text-sm text-slate-100">{l.title}</p>
                 <p className="mt-1 line-clamp-2 text-xs text-slate-400">{l.content}</p>
               </div>
-              <button
+              <LiquidIconButton
                 onClick={async () => {
-                  await supabase.from("lessons").delete().eq("id", l.id);
+                  await localDb.from("lessons").delete().eq("id", l.id);
                   onChange();
                 }}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-destructive/20 hover:text-destructive"
+                variant="destructive"
+                size="icon"
+                className="h-11 w-11 shrink-0"
                 aria-label="Xóa"
               >
                 <Trash2 className="h-4 w-4" />
-              </button>
+              </LiquidIconButton>
             </li>
           ))}
         </ul>
@@ -322,7 +371,14 @@ function AssignmentsTab({
 }: {
   courseId: string;
   assignments: { id: string; title: string; description: string | null; due_date: string | null }[];
-  submissions: { id: string; assignment_id: string; student_id: string; content: string | null; grade: number | null; feedback: string | null }[];
+  submissions: {
+    id: string;
+    assignment_id: string;
+    student_id: string;
+    content: string | null;
+    grade: number | null;
+    feedback: string | null;
+  }[];
   students: { student_id: string; student: { id: string; name: string } | null }[];
   onChange: () => void;
 }) {
@@ -330,19 +386,30 @@ function AssignmentsTab({
   const [selected, setSelected] = useState<string | null>(assignments[0]?.id ?? null);
 
   async function add() {
-    if (!title.trim()) { toast.error("Nhập tên bài tập"); return; }
-    const { error } = await supabase.from("assignments").insert({ course_id: courseId, title: title.trim() });
-    if (error) { toast.error(error.message); return; }
+    if (!title.trim()) {
+      toast.error("Nhập tên bài tập");
+      return;
+    }
+    const { error } = await localDb
+      .from("assignments")
+      .insert({ course_id: courseId, title: title.trim() });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setTitle("");
     onChange();
   }
 
   async function grade(id: string, value: string, feedback: string) {
-    const { error } = await supabase
+    const { error } = await localDb
       .from("submissions")
       .update({ grade: value === "" ? null : Number(value), feedback: feedback || null })
       .eq("id", id);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Đã lưu điểm");
     onChange();
   }
@@ -354,20 +421,27 @@ function AssignmentsTab({
       <GlassPanel>
         <SectionTitle title="Bài tập" icon={<Plus className="h-4 w-4" />} />
         <div className="flex gap-2">
-          <input className={inputCls} placeholder="Tên bài tập" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <button onClick={add} className="rounded-xl bg-white/10 px-4 text-sm text-slate-100">
+          <input
+            className={inputCls}
+            placeholder="Tên bài tập"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <LiquidButton onClick={add} variant="secondary">
             Thêm
-          </button>
+          </LiquidButton>
         </div>
         <ul className="mt-4 space-y-2">
           {assignments.map((a) => (
             <li key={a.id}>
               <button
+                type="button"
                 onClick={() => setSelected(a.id)}
+                aria-pressed={selected === a.id}
                 className={cn(
-                  "w-full rounded-xl border px-3 py-2 text-left text-sm",
+                  "w-full rounded-xl border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring",
                   selected === a.id
-                    ? "border-aurora-blue/50 bg-aurora-blue/15 text-slate-100"
+                    ? "liquid-control-selected text-slate-100"
                     : "border-white/10 bg-white/[0.03] text-slate-300",
                 )}
               >
@@ -384,7 +458,9 @@ function AssignmentsTab({
           {list.map((s) => (
             <GradeRow
               key={s.id}
-              name={students.find((st) => st.student_id === s.student_id)?.student?.name ?? "Sinh viên"}
+              name={
+                students.find((st) => st.student_id === s.student_id)?.student?.name ?? "Sinh viên"
+              }
               submission={s}
               onSave={grade}
             />
@@ -427,12 +503,9 @@ function GradeRow({
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
         />
-        <button
-          onClick={() => onSave(submission.id, grade, feedback)}
-          className="rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-xs font-semibold text-slate-50"
-        >
+        <LiquidButton onClick={() => onSave(submission.id, grade, feedback)} size="sm">
           Lưu
-        </button>
+        </LiquidButton>
       </div>
     </div>
   );
@@ -459,29 +532,47 @@ function QuizzesTab({
   const topicOptions = [...new Set(questions.map((q) => q.topic_tag))];
 
   async function addQuiz() {
-    if (!quizTitle.trim()) { toast.error("Nhập tên quiz"); return; }
-    const { data, error } = await supabase
+    if (!quizTitle.trim()) {
+      toast.error("Nhập tên quiz");
+      return;
+    }
+    const { data, error } = await localDb
       .from("quizzes")
       .insert({ course_id: courseId, title: quizTitle.trim() })
       .select("id")
       .single();
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setQuizTitle("");
     setSelected(data.id);
     onChange();
   }
 
   async function addQuestion() {
-    if (!selected) { toast.error("Chọn một quiz"); return; }
-    if (!text.trim() || !topic.trim()) { toast.error("Câu hỏi và chủ đề (topic tag) là bắt buộc"); return; }
-    const { error } = await supabase.from("questions").insert({
+    if (!selected) {
+      toast.error("Chọn một quiz");
+      return;
+    }
+    if (!text.trim() || !topic.trim()) {
+      toast.error("Câu hỏi và chủ đề (topic tag) là bắt buộc");
+      return;
+    }
+    const { error } = await localDb.from("questions").insert({
       quiz_id: selected,
       text: text.trim(),
       topic_tag: topic.trim(),
       correct_answer: correct,
-      options: (["A", "B", "C", "D"] as const).map((k) => ({ key: k, text: options[k] || `Phương án ${k}` })),
+      options: (["A", "B", "C", "D"] as const).map((k) => ({
+        key: k,
+        text: options[k] || `Phương án ${k}`,
+      })),
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setText("");
     setOptions({ A: "", B: "", C: "", D: "" });
     toast.success("Đã thêm câu hỏi");
@@ -493,20 +584,27 @@ function QuizzesTab({
       <GlassPanel>
         <SectionTitle title="Bài kiểm tra" icon={<Plus className="h-4 w-4" />} />
         <div className="flex gap-2">
-          <input className={inputCls} placeholder="Tên quiz" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} />
-          <button onClick={addQuiz} className="rounded-xl bg-white/10 px-4 text-sm text-slate-100">
+          <input
+            className={inputCls}
+            placeholder="Tên quiz"
+            value={quizTitle}
+            onChange={(e) => setQuizTitle(e.target.value)}
+          />
+          <LiquidButton onClick={addQuiz} variant="secondary">
             Thêm
-          </button>
+          </LiquidButton>
         </div>
         <ul className="mt-4 space-y-2">
           {quizzes.map((q) => (
             <li key={q.id} className="flex items-center gap-1">
               <button
+                type="button"
                 onClick={() => setSelected(q.id)}
+                aria-pressed={selected === q.id}
                 className={cn(
-                  "flex-1 rounded-xl border px-3 py-2 text-left text-sm",
+                  "flex-1 rounded-xl border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring",
                   selected === q.id
-                    ? "border-aurora-blue/50 bg-aurora-blue/15 text-slate-100"
+                    ? "liquid-control-selected text-slate-100"
                     : "border-white/10 bg-white/[0.03] text-slate-300",
                 )}
               >
@@ -514,32 +612,43 @@ function QuizzesTab({
                 <span className="ml-2 text-xs text-slate-500">
                   {questions.filter((x) => x.quiz_id === q.id).length} câu
                 </span>
-                {!q.visible ? <span className="ml-2 text-xs text-[color:var(--warning)]">đang ẩn</span> : null}
+                {!q.visible ? (
+                  <span className="ml-2 text-xs text-[color:var(--warning)]">đang ẩn</span>
+                ) : null}
               </button>
-              <button
+              <LiquidIconButton
                 onClick={async () => {
-                  const { error } = await supabase.from("quizzes").update({ visible: !q.visible }).eq("id", q.id);
-                  if (error) { toast.error(error.message); return; }
+                  const { error } = await localDb
+                    .from("quizzes")
+                    .update({ visible: !q.visible })
+                    .eq("id", q.id);
+                  if (error) {
+                    toast.error(error.message);
+                    return;
+                  }
                   onChange();
                 }}
-                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-100"
+                variant="ghost"
                 aria-label={q.visible ? "Ẩn quiz" : "Hiện quiz"}
               >
                 {q.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              </button>
-              <button
+              </LiquidIconButton>
+              <LiquidIconButton
                 onClick={async () => {
-                  const { error } = await supabase.from("quizzes").delete().eq("id", q.id);
-                  if (error) { toast.error("Không xóa được (quiz đã có lượt làm bài) — hãy dùng nút ẩn."); return; }
+                  const { error } = await localDb.from("quizzes").delete().eq("id", q.id);
+                  if (error) {
+                    toast.error("Không xóa được (quiz đã có lượt làm bài) — hãy dùng nút ẩn.");
+                    return;
+                  }
                   if (selected === q.id) setSelected(null);
                   toast.success("Đã xóa quiz");
                   onChange();
                 }}
-                className="rounded-lg p-1.5 text-slate-400 hover:text-destructive"
+                variant="destructive"
                 aria-label="Xóa quiz"
               >
                 <Trash2 className="h-4 w-4" />
-              </button>
+              </LiquidIconButton>
             </li>
           ))}
         </ul>
@@ -568,7 +677,11 @@ function QuizzesTab({
                 <option key={t} value={t} />
               ))}
             </datalist>
-            <select className={inputCls} value={correct} onChange={(e) => setCorrect(e.target.value)}>
+            <select
+              className={inputCls}
+              value={correct}
+              onChange={(e) => setCorrect(e.target.value)}
+            >
               {["A", "B", "C", "D"].map((k) => (
                 <option key={k} value={k} className="bg-slate-900">
                   Đáp án đúng: {k}
@@ -587,33 +700,35 @@ function QuizzesTab({
               />
             ))}
           </div>
-          <button
-            onClick={addQuestion}
-            className="rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-5 py-2 text-sm font-semibold text-slate-50"
-          >
-            Thêm câu hỏi
-          </button>
+          <LiquidButton onClick={addQuestion}>Thêm câu hỏi</LiquidButton>
         </div>
 
         <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto pr-1">
           {questions
             .filter((q) => q.quiz_id === selected)
             .map((q) => (
-              <li key={q.id} className="flex items-start justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+              <li
+                key={q.id}
+                className="flex items-start justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5"
+              >
                 <p className="text-xs text-slate-300">
                   {q.text}
-                  <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300">{q.topic_tag}</span>
+                  <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300">
+                    {q.topic_tag}
+                  </span>
                 </p>
-                <button
+                <LiquidIconButton
                   onClick={async () => {
-                    await supabase.from("questions").delete().eq("id", q.id);
+                    await localDb.from("questions").delete().eq("id", q.id);
                     onChange();
                   }}
-                  className="rounded-lg p-1 text-slate-400 hover:text-destructive"
+                  variant="destructive"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
                   aria-label="Xóa"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                </LiquidIconButton>
               </li>
             ))}
         </ul>
@@ -636,7 +751,7 @@ function StudentsTab({
   const [busy, setBusy] = useState(false);
 
   async function search() {
-    const { data, error } = await supabase.rpc("search_students", { _q: q.trim() });
+    const { data, error } = await localDb.rpc("search_students", { _q: q.trim() });
     if (error) {
       toast.error(error.message);
       return;
@@ -647,7 +762,7 @@ function StudentsTab({
 
   async function add(studentId: string | null, newName: string | null) {
     setBusy(true);
-    const { error } = await supabase.rpc("teacher_add_student", {
+    const { error } = await localDb.rpc("teacher_add_student", {
       _course_id: courseId,
       _student_id: studentId,
       _new_name: newName,
@@ -664,7 +779,11 @@ function StudentsTab({
   }
 
   async function remove(studentId: string) {
-    const { error } = await supabase.from("enrollments").delete().eq("course_id", courseId).eq("student_id", studentId);
+    const { error } = await localDb
+      .from("enrollments")
+      .delete()
+      .eq("course_id", courseId)
+      .eq("student_id", studentId);
     if (error) {
       toast.error(error.message);
       return;
@@ -677,18 +796,25 @@ function StudentsTab({
     <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
       <GlassPanel>
         <div className="flex items-center justify-between gap-2">
-          <SectionTitle title={`Sinh viên trong lớp (${students.length})`} icon={<Users className="h-4 w-4" />} />
-          <button
+          <SectionTitle
+            title={`Sinh viên trong lớp (${students.length})`}
+            icon={<Users className="h-4 w-4" />}
+          />
+          <LiquidButton
             onClick={() =>
               downloadCsv(
                 `danh-sach-lop-${courseId.slice(0, 8)}`,
-                students.map((s) => ({ "Sinh viên": s.student?.name ?? "", "Mã sinh viên": s.student_id })),
+                students.map((s) => ({
+                  "Sinh viên": s.student?.name ?? "",
+                  "Mã sinh viên": s.student_id,
+                })),
               )
             }
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/10"
+            variant="outline"
+            size="sm"
           >
             <Download className="h-3.5 w-3.5" /> CSV
-          </button>
+          </LiquidButton>
         </div>
         <ul className="grid gap-2 sm:grid-cols-2">
           {students.map((s) => (
@@ -697,21 +823,29 @@ function StudentsTab({
               className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200"
             >
               {s.student?.name ?? "Sinh viên"}
-              <button
+              <LiquidIconButton
                 onClick={() => remove(s.student_id)}
-                className="rounded-lg p-1 text-slate-400 transition hover:text-destructive"
+                variant="destructive"
+                size="icon"
+                className="h-11 w-11 shrink-0"
                 aria-label="Gỡ khỏi lớp"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              </LiquidIconButton>
             </li>
           ))}
-          {students.length === 0 ? <li className="text-sm text-slate-400">Chưa có sinh viên nào.</li> : null}
+          {students.length === 0 ? (
+            <li className="text-sm text-slate-400">Chưa có sinh viên nào.</li>
+          ) : null}
         </ul>
       </GlassPanel>
 
       <GlassPanel>
-        <SectionTitle title="Thêm sinh viên" subtitle="Tìm sinh viên có sẵn hoặc tạo hồ sơ mới" icon={<UserPlus className="h-4 w-4" />} />
+        <SectionTitle
+          title="Thêm sinh viên"
+          subtitle="Tìm sinh viên có sẵn hoặc tạo hồ sơ mới"
+          icon={<UserPlus className="h-4 w-4" />}
+        />
         <div className="flex gap-2">
           <input
             className={inputCls}
@@ -722,9 +856,9 @@ function StudentsTab({
               if (e.key === "Enter") search();
             }}
           />
-          <button onClick={search} className="rounded-xl bg-white/10 px-4 text-sm text-slate-100">
+          <LiquidButton onClick={search} variant="secondary">
             Tìm
-          </button>
+          </LiquidButton>
         </div>
         <ul className="mt-3 space-y-2">
           {results.map((r) => (
@@ -733,23 +867,25 @@ function StudentsTab({
               className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-slate-200"
             >
               {r.name}
-              <button
-                disabled={busy}
+              <LiquidButton
+                loading={busy}
                 onClick={() => add(r.id, null)}
-                className="rounded-lg border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10 disabled:opacity-50"
+                variant="outline"
+                size="sm"
               >
                 Thêm
-              </button>
+              </LiquidButton>
             </li>
           ))}
         </ul>
-        <button
-          disabled={busy || !q.trim()}
+        <LiquidButton
+          disabled={!q.trim()}
+          loading={busy}
           onClick={() => add(null, q.trim())}
-          className="mt-3 w-full rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-sm font-semibold text-slate-50 disabled:opacity-50"
+          className="mt-3 w-full"
         >
           Tạo hồ sơ mới "{q.trim() || "…"}" và thêm vào lớp
-        </button>
+        </LiquidButton>
       </GlassPanel>
     </div>
   );

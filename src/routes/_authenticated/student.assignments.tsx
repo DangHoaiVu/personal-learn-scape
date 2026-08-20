@@ -3,16 +3,21 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, CheckCircle2, CircleAlert, ClipboardList } from "lucide-react";
 import { GlassPanel, Loading, SectionTitle, StatCard } from "@/components/app/glass";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 import { useMyCourses } from "@/lib/queries";
 import { useProfile } from "@/lib/session";
 import { deadlineClass, deadlineInfo } from "@/lib/deadline";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/student/assignments")({
   head: () => ({
     meta: [
       { title: "Bài tập & hạn nộp · EduSense" },
-      { name: "description", content: "Tất cả bài tập của mọi khóa học, trạng thái nộp bài, điểm số và nhận xét của giáo viên." },
+      {
+        name: "description",
+        content:
+          "Tất cả bài tập của mọi khóa học, trạng thái nộp bài, điểm số và nhận xét của giáo viên.",
+      },
       { property: "og:title", content: "Bài tập & hạn nộp · EduSense" },
       { property: "og:description", content: "Theo dõi deadline, trạng thái nộp bài và điểm số." },
       { property: "og:type", content: "website" },
@@ -39,7 +44,11 @@ type Submission = {
 
 function fmt(d: string | null) {
   if (!d) return "Không giới hạn";
-  return new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(d).toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 function StudentAssignments() {
@@ -52,12 +61,12 @@ function StudentAssignments() {
     enabled: courseIds.length > 0 && Boolean(profile?.id),
     queryFn: async () => {
       const [assignments, submissions] = await Promise.all([
-        supabase
+        localDb
           .from("assignments")
           .select("id,course_id,title,description,due_date")
           .in("course_id", courseIds)
           .order("due_date"),
-        supabase
+        localDb
           .from("submissions")
           .select("id,assignment_id,grade,feedback,submitted_at")
           .eq("student_id", profile!.id),
@@ -145,15 +154,15 @@ function StudentAssignments() {
                     </span>
                   )}
                   {sub?.grade != null ? (
-                    <span className="stat-num text-lg font-semibold text-slate-100">{sub.grade}/10</span>
+                    <span className="stat-num text-lg font-semibold text-slate-100">
+                      {sub.grade}/10
+                    </span>
                   ) : null}
-                  <Link
-                    to="/student/courses/$courseId"
-                    params={{ courseId: a.course_id }}
-                    className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/15"
-                  >
-                    {sub ? "Xem lại" : "Nộp bài"}
-                  </Link>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/student/courses/$courseId" params={{ courseId: a.course_id }}>
+                      {sub ? "Xem lại" : "Nộp bài"}
+                    </Link>
+                  </Button>
                 </div>
               </div>
               {sub?.feedback ? (

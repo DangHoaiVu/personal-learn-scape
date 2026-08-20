@@ -3,17 +3,24 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, BookOpen, GraduationCap } from "lucide-react";
 import { GlassPanel, Loading, SectionTitle } from "@/components/app/glass";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 import { useAttempts, useMyCourses } from "@/lib/queries";
 import { useProfile } from "@/lib/session";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/student/courses/")({
   head: () => ({
     meta: [
       { title: "Khóa học của tôi · EduSense" },
-      { name: "description", content: "Danh sách khóa học đang theo học, tiến độ bài giảng và điểm trung bình từng môn." },
+      {
+        name: "description",
+        content: "Danh sách khóa học đang theo học, tiến độ bài giảng và điểm trung bình từng môn.",
+      },
       { property: "og:title", content: "Khóa học của tôi · EduSense" },
-      { property: "og:description", content: "Tiến độ bài giảng và điểm trung bình theo từng khóa học." },
+      {
+        property: "og:description",
+        content: "Tiến độ bài giảng và điểm trung bình theo từng khóa học.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -32,9 +39,9 @@ function StudentCourses() {
     enabled: courseIds.length > 0,
     queryFn: async () => {
       const [lessons, quizzes, assignments] = await Promise.all([
-        supabase.from("lessons").select("id,course_id").in("course_id", courseIds),
-        supabase.from("quizzes").select("id,course_id").in("course_id", courseIds),
-        supabase.from("assignments").select("id,course_id").in("course_id", courseIds),
+        localDb.from("lessons").select("id,course_id").in("course_id", courseIds),
+        localDb.from("quizzes").select("id,course_id").in("course_id", courseIds),
+        localDb.from("assignments").select("id,course_id").in("course_id", courseIds),
       ]);
       return {
         lessons: (lessons.data ?? []) as { id: string; course_id: string }[],
@@ -68,10 +75,11 @@ function StudentCourses() {
               ? (mine.reduce((s, a) => s + Number(a.score), 0) / mine.length).toFixed(1)
               : "—";
             const done = mine.length;
-            const totalQuizzes = counts?.quizzes.filter((q) => q.course_id === course.id).length ?? 0;
+            const totalQuizzes =
+              counts?.quizzes.filter((q) => q.course_id === course.id).length ?? 0;
             const pct = totalQuizzes ? Math.round((done / totalQuizzes) * 100) : 0;
             return (
-              <GlassPanel interactive key={course.id} className="flex flex-col">
+              <GlassPanel key={course.id} className="flex flex-col">
                 <div className="flex items-start gap-3">
                   <span className="rounded-xl border border-white/15 bg-white/10 p-2 text-slate-200">
                     <BookOpen className="h-4 w-4" />
@@ -86,11 +94,15 @@ function StudentCourses() {
                   <Metric label="Điểm TB" value={avg} />
                   <Metric
                     label="Bài giảng"
-                    value={String(counts?.lessons.filter((l) => l.course_id === course.id).length ?? 0)}
+                    value={String(
+                      counts?.lessons.filter((l) => l.course_id === course.id).length ?? 0,
+                    )}
                   />
                   <Metric
                     label="Bài tập"
-                    value={String(counts?.assignments.filter((a) => a.course_id === course.id).length ?? 0)}
+                    value={String(
+                      counts?.assignments.filter((a) => a.course_id === course.id).length ?? 0,
+                    )}
                   />
                 </div>
 
@@ -109,13 +121,11 @@ function StudentCourses() {
                   </div>
                 </div>
 
-                <Link
-                  to="/student/courses/$courseId"
-                  params={{ courseId: course.id }}
-                  className="mt-4 inline-flex items-center gap-2 self-start rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/15"
-                >
-                  Vào học <ArrowRight className="h-4 w-4" />
-                </Link>
+                <Button asChild variant="outline" className="mt-4 self-start">
+                  <Link to="/student/courses/$courseId" params={{ courseId: course.id }}>
+                    Vào học <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
               </GlassPanel>
             );
           })}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
+import { LiquidIconButton } from "@/components/app/liquid";
 
 const KEY = "edusense-theme";
 
@@ -24,15 +25,13 @@ export function ThemeToggle({ className }: { className?: string }) {
   }
 
   return (
-    <button
+    <LiquidIconButton
       onClick={toggle}
       aria-label={theme === "dark" ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
-      className={
-        className ??
-        "rounded-full border border-white/15 bg-white/5 p-2 text-slate-300 transition hover:bg-white/15"
-      }
+      variant="outline"
+      className={className ?? "text-slate-300"}
     >
       {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </button>
+    </LiquidIconButton>
   );
 }

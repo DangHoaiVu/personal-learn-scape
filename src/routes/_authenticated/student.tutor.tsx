@@ -3,16 +3,20 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, Send, Sparkles, User } from "lucide-react";
 import { LiquidPanel, Loading } from "@/components/app/glass";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 import { useProfile } from "@/lib/session";
 import { useTopicStats, useMyCourses } from "@/lib/queries";
 import { studentTutorReply } from "@/lib/ai/mockTutorResponse";
+import { LiquidButton, LiquidIconButton } from "@/components/app/liquid";
 
 export const Route = createFileRoute("/_authenticated/student/tutor")({
   head: () => ({
     meta: [
       { title: "AI Tutor · EduSense" },
-      { name: "description", content: "Trợ giảng AI gợi ý lộ trình ôn tập dựa trên hồ sơ năng lực của bạn." },
+      {
+        name: "description",
+        content: "Trợ giảng AI gợi ý lộ trình ôn tập dựa trên hồ sơ năng lực của bạn.",
+      },
       { property: "og:title", content: "AI Tutor · EduSense" },
       { property: "og:description", content: "Hỏi đáp và nhận gợi ý ôn tập cá nhân hóa." },
       { property: "og:type", content: "website" },
@@ -36,7 +40,7 @@ function TutorPage() {
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ["chat"],
     queryFn: async (): Promise<Message[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("chat_messages")
         .select("id,role,content,created_at")
         .order("created_at");
@@ -55,22 +59,30 @@ function TutorPage() {
     const text = input.trim();
     setInput("");
     setSending(true);
-    await supabase.from("chat_messages").insert({ student_id: profile.id, role: "user", content: text });
+    await localDb
+      .from("chat_messages")
+      .insert({ student_id: profile.id, role: "user", content: text });
     const reply = await studentTutorReply({ question: text, topics, courses });
-    await supabase
+    await localDb
       .from("chat_messages")
       .insert({ student_id: profile.id, role: "ai", content: reply });
     await queryClient.invalidateQueries({ queryKey: ["chat"] });
     setSending(false);
   }
 
-  const suggestions = ["Mình nên ôn gì tiếp theo?", "Chủ đề nào mình đang yếu?", "Điểm của mình thế nào?"];
+  const suggestions = [
+    "Mình nên ôn gì tiếp theo?",
+    "Chủ đề nào mình đang yếu?",
+    "Điểm của mình thế nào?",
+  ];
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-slate-100">AI Tutor</h1>
-        <p className="text-sm text-slate-400">Trợ giảng cá nhân, đọc trực tiếp hồ sơ năng lực của bạn.</p>
+        <p className="text-sm text-slate-400">
+          Trợ giảng cá nhân, đọc trực tiếp hồ sơ năng lực của bạn.
+        </p>
       </div>
 
       <LiquidPanel className="flex h-[62vh] flex-col p-0">
@@ -83,13 +95,15 @@ function TutorPage() {
               <p className="text-sm text-slate-400">Hãy bắt đầu bằng một câu hỏi.</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {suggestions.map((s) => (
-                  <button
+                  <LiquidButton
                     key={s}
                     onClick={() => setInput(s)}
-                    className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10"
+                    variant="outline"
+                    size="sm"
+                    className="liquid-chip"
                   >
                     {s}
-                  </button>
+                  </LiquidButton>
                 ))}
               </div>
             </div>
@@ -127,14 +141,9 @@ function TutorPage() {
             placeholder="Hỏi AI Tutor…"
             className="flex-1 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-aurora-blue/60"
           />
-          <button
-            type="submit"
-            disabled={sending}
-            className="rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet p-2.5 text-slate-50 disabled:opacity-60"
-            aria-label="Gửi"
-          >
+          <LiquidIconButton type="submit" loading={sending} aria-label="Gửi">
             <Send className="h-4 w-4" />
-          </button>
+          </LiquidIconButton>
         </form>
       </LiquidPanel>
     </div>

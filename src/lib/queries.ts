@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 
 export type CourseRow = { id: string; title: string; description: string | null };
 
 async function currentUserId() {
-  const { data } = await supabase.auth.getUser();
+  const { data } = await localDb.auth.getUser();
   return data.user?.id ?? null;
 }
 
@@ -15,14 +15,14 @@ export function useMyCourses() {
     queryFn: async (): Promise<CourseRow[]> => {
       const uid = await currentUserId();
       if (!uid) return [];
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("enrollments")
         .select("course:courses(id,title,description)")
         .eq("student_id", uid);
       if (error) throw error;
       return (data ?? [])
-        .map((r) => (r as { course: CourseRow | null }).course)
-        .filter((c): c is CourseRow => Boolean(c));
+        .map((r: unknown) => (r as { course: CourseRow | null }).course)
+        .filter((course: CourseRow | null): course is CourseRow => Boolean(course));
     },
   });
 }
@@ -41,7 +41,7 @@ export function useAttempts(courseIds: string[] | undefined) {
     queryKey: ["attempts", courseIds],
     enabled: Boolean(courseIds && courseIds.length),
     queryFn: async (): Promise<AttemptRow[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("quiz_attempts")
         .select("id,score,attempted_at,student_id,quiz:quizzes(id,title,course_id)")
         .order("attempted_at", { ascending: true });
@@ -62,7 +62,7 @@ export function useTopicStats(studentId?: string | null) {
     queryFn: async (): Promise<TopicStat[]> => {
       const uid = studentId ?? (await currentUserId());
       if (!uid) return [];
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("question_attempts")
         .select(
           "is_correct,question:questions(topic_tag,quiz:quizzes(course_id)),attempt:quiz_attempts!inner(student_id)",
@@ -76,9 +76,12 @@ export function useTopicStats(studentId?: string | null) {
       }[]) {
         if (!row.question?.quiz) continue;
         const key = `${row.question.quiz.course_id}::${row.question.topic_tag}`;
-        const cur =
-          map.get(key) ??
-          { course_id: row.question.quiz.course_id, topic_tag: row.question.topic_tag, correct: 0, total: 0 };
+        const cur = map.get(key) ?? {
+          course_id: row.question.quiz.course_id,
+          topic_tag: row.question.topic_tag,
+          correct: 0,
+          total: 0,
+        };
         cur.total += 1;
         if (row.is_correct) cur.correct += 1;
         map.set(key, cur);
@@ -93,7 +96,7 @@ export function useActivityLogs(courseIds?: string[]) {
   return useQuery({
     queryKey: ["activity", courseIds],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("activity_logs")
         .select("student_id,course_id,action,timestamp")
         .order("timestamp", { ascending: false })
@@ -105,7 +108,9 @@ export function useActivityLogs(courseIds?: string[]) {
         action: string;
         timestamp: string;
       }[];
-      return courseIds?.length ? rows.filter((r) => r.course_id && courseIds.includes(r.course_id)) : rows;
+      return courseIds?.length
+        ? rows.filter((r) => r.course_id && courseIds.includes(r.course_id))
+        : rows;
     },
   });
 }
@@ -117,7 +122,7 @@ export function useTeachingCourses() {
     queryFn: async (): Promise<CourseRow[]> => {
       const uid = await currentUserId();
       if (!uid) return [];
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("courses")
         .select("id,title,description")
         .eq("teacher_id", uid)
@@ -132,7 +137,7 @@ export function useRiskAlerts() {
   return useQuery({
     queryKey: ["risk-alerts"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("risk_alerts")
         .select("id,reason,level,created_at,course_id,student:profiles(id,name)")
         .order("created_at", { ascending: false });
@@ -154,7 +159,7 @@ export function useQuestionAnalytics(courseIds: string[] | undefined) {
     queryKey: ["question-analytics", courseIds],
     enabled: Boolean(courseIds && courseIds.length),
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("question_attempts")
         .select("is_correct,question:questions(id,text,topic_tag,quiz:quizzes(id,title,course_id))")
         .limit(20000);
@@ -170,14 +175,28 @@ export function useQuestionAnalytics(courseIds: string[] | undefined) {
       }[];
       const map = new Map<
         string,
-        { id: string; text: string; topic: string; quiz: string; courseId: string; wrong: number; total: number }
+        {
+          id: string;
+          text: string;
+          topic: string;
+          quiz: string;
+          courseId: string;
+          wrong: number;
+          total: number;
+        }
       >();
       for (const r of rows) {
         const q = r.question;
         if (!q?.quiz || !courseIds!.includes(q.quiz.course_id)) continue;
-        const cur =
-          map.get(q.id) ??
-          { id: q.id, text: q.text, topic: q.topic_tag, quiz: q.quiz.title, courseId: q.quiz.course_id, wrong: 0, total: 0 };
+        const cur = map.get(q.id) ?? {
+          id: q.id,
+          text: q.text,
+          topic: q.topic_tag,
+          quiz: q.quiz.title,
+          courseId: q.quiz.course_id,
+          wrong: 0,
+          total: 0,
+        };
         cur.total += 1;
         if (!r.is_correct) cur.wrong += 1;
         map.set(q.id, cur);

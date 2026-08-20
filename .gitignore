@@ -10,15 +10,14 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-.output
 .vinxi
 .tanstack/**
-.nitro
 *.local
 
-# Wrangler / Cloudflare
-.wrangler/
-.dev.vars
+# Local SQLite
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
 
 # Editor directories and files
 .vscode/*

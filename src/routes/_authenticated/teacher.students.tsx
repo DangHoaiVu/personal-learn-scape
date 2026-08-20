@@ -3,17 +3,25 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Search, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { GlassPanel, Loading, SectionTitle, StatCard } from "@/components/app/glass";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 import { useAttempts, useTeachingCourses } from "@/lib/queries";
 import { downloadCsv } from "@/lib/csv";
+import { LiquidButton } from "@/components/app/liquid";
 
 export const Route = createFileRoute("/_authenticated/teacher/students")({
   head: () => ({
     meta: [
       { title: "Danh sách sinh viên · EduSense" },
-      { name: "description", content: "Toàn bộ sinh viên theo khóa học, điểm trung bình, xu hướng tiến bộ và mức độ hoạt động." },
+      {
+        name: "description",
+        content:
+          "Toàn bộ sinh viên theo khóa học, điểm trung bình, xu hướng tiến bộ và mức độ hoạt động.",
+      },
       { property: "og:title", content: "Danh sách sinh viên · EduSense" },
-      { property: "og:description", content: "So sánh năng lực và mức độ hoạt động của từng sinh viên." },
+      {
+        property: "og:description",
+        content: "So sánh năng lực và mức độ hoạt động của từng sinh viên.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -33,7 +41,7 @@ function TeacherStudents() {
     queryKey: ["teacher-roster", courseIds],
     enabled: courseIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("enrollments")
         .select("course_id,student:profiles(id,name)")
         .in("course_id", courseIds);
@@ -51,7 +59,11 @@ function TeacherStudents() {
   const students = new Map<string, { id: string; name: string; courses: Set<string> }>();
   for (const r of visible) {
     if (!r.student) continue;
-    const cur = students.get(r.student.id) ?? { id: r.student.id, name: r.student.name, courses: new Set<string>() };
+    const cur = students.get(r.student.id) ?? {
+      id: r.student.id,
+      name: r.student.name,
+      courses: new Set<string>(),
+    };
     cur.courses.add(r.course_id);
     students.set(r.student.id, cur);
   }
@@ -59,12 +71,18 @@ function TeacherStudents() {
   const rows = [...students.values()]
     .map((s) => {
       const mine = attempts
-        .filter((a) => a.student_id === s.id && a.quiz && (courseFilter === "all" || a.quiz.course_id === courseFilter))
+        .filter(
+          (a) =>
+            a.student_id === s.id &&
+            a.quiz &&
+            (courseFilter === "all" || a.quiz.course_id === courseFilter),
+        )
         .sort((a, b) => a.attempted_at.localeCompare(b.attempted_at));
       const first = mine[0];
       const latest = mine[mine.length - 1];
       const avg = mine.length ? mine.reduce((t, a) => t + Number(a.score), 0) / mine.length : null;
-      const trend = first && latest && mine.length >= 2 ? Number(latest.score) - Number(first.score) : 0;
+      const trend =
+        first && latest && mine.length >= 2 ? Number(latest.score) - Number(first.score) : 0;
       const last = latest ? latest.attempted_at : null;
       return { ...s, avg, trend, attempts: mine.length, last };
     })
@@ -72,7 +90,9 @@ function TeacherStudents() {
     .sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
 
   const graded = rows.filter((r) => r.avg != null);
-  const classAvg = graded.length ? (graded.reduce((t, r) => t + r.avg!, 0) / graded.length).toFixed(2) : "—";
+  const classAvg = graded.length
+    ? (graded.reduce((t, r) => t + r.avg!, 0) / graded.length).toFixed(2)
+    : "—";
   const atRisk = graded.filter((r) => r.avg! < 5 || r.trend <= -1.5).length;
 
   return (
@@ -112,7 +132,7 @@ function TeacherStudents() {
               </option>
             ))}
           </select>
-          <button
+          <LiquidButton
             onClick={() =>
               downloadCsv(
                 `sinh-vien-${new Date().toISOString().slice(0, 10)}`,
@@ -126,10 +146,10 @@ function TeacherStudents() {
                 })),
               )
             }
-            className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+            variant="outline"
           >
             <Download className="h-4 w-4" /> Xuất CSV
-          </button>
+          </LiquidButton>
         </div>
 
         <div className="mt-4 overflow-x-auto">
@@ -150,7 +170,9 @@ function TeacherStudents() {
                   <td className="py-2.5 text-slate-100">{s.name}</td>
                   <td className="py-2.5">{s.courses.size}</td>
                   <td className="py-2.5">{s.attempts}</td>
-                  <td className="stat-num py-2.5 text-slate-100">{s.avg != null ? s.avg.toFixed(2) : "—"}</td>
+                  <td className="stat-num py-2.5 text-slate-100">
+                    {s.avg != null ? s.avg.toFixed(2) : "—"}
+                  </td>
                   <td className="py-2.5">
                     <span
                       className={
@@ -159,7 +181,11 @@ function TeacherStudents() {
                           : "inline-flex items-center gap-1 text-destructive"
                       }
                     >
-                      {s.trend >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                      {s.trend >= 0 ? (
+                        <TrendingUp className="h-4 w-4" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4" />
+                      )}
                       {s.trend.toFixed(1)}
                     </span>
                   </td>
@@ -170,7 +196,9 @@ function TeacherStudents() {
               ))}
             </tbody>
           </table>
-          {rows.length === 0 ? <p className="py-6 text-sm text-slate-400">Không tìm thấy sinh viên.</p> : null}
+          {rows.length === 0 ? (
+            <p className="py-6 text-sm text-slate-400">Không tìm thấy sinh viên.</p>
+          ) : null}
         </div>
       </GlassPanel>
     </div>

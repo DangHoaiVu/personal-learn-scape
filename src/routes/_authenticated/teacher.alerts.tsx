@@ -4,17 +4,24 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Download, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import { GlassPanel, Loading, SectionTitle, StatCard } from "@/components/app/glass";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 import { useRiskAlerts, useTeachingCourses } from "@/lib/queries";
 import { downloadCsv } from "@/lib/csv";
+import { LiquidButton, LiquidSegmentedControl, LiquidSegmentedItem } from "@/components/app/liquid";
 
 export const Route = createFileRoute("/_authenticated/teacher/alerts")({
   head: () => ({
     meta: [
       { title: "Cảnh báo nguy cơ · EduSense" },
-      { name: "description", content: "Danh sách sinh viên có nguy cơ, tính lại theo yêu cầu và xuất báo cáo CSV." },
+      {
+        name: "description",
+        content: "Danh sách sinh viên có nguy cơ, tính lại theo yêu cầu và xuất báo cáo CSV.",
+      },
       { property: "og:title", content: "Cảnh báo nguy cơ · EduSense" },
-      { property: "og:description", content: "Phát hiện sớm sinh viên cần hỗ trợ dựa trên dữ liệu thật." },
+      {
+        property: "og:description",
+        content: "Phát hiện sớm sinh viên cần hỗ trợ dựa trên dữ liệu thật.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -35,9 +42,12 @@ function TeacherAlerts() {
 
   async function recompute() {
     setBusy(true);
-    const { data, error } = await supabase.rpc("recompute_risk_alerts");
+    const { data, error } = await localDb.rpc("recompute_risk_alerts");
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(`Đã tính lại: ${data ?? 0} cảnh báo`);
     queryClient.invalidateQueries({ queryKey: ["risk-alerts"] });
   }
@@ -67,50 +77,58 @@ function TeacherAlerts() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={recompute}
-            disabled={busy}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2 text-sm font-semibold text-slate-50 disabled:opacity-60"
-          >
+          <LiquidButton onClick={recompute} loading={busy}>
             <RefreshCcw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} />
             {busy ? "Đang tính…" : "Tính lại cảnh báo"}
-          </button>
-          <button
-            onClick={exportCsv}
-            disabled={rows.length === 0}
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200 hover:bg-white/10 disabled:opacity-50"
-          >
+          </LiquidButton>
+          <LiquidButton onClick={exportCsv} disabled={rows.length === 0} variant="outline">
             <Download className="h-4 w-4" /> Xuất CSV
-          </button>
+          </LiquidButton>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Tổng cảnh báo" value={rows.length} tone={rows.length ? "warning" : "success"} />
+        <StatCard
+          label="Tổng cảnh báo"
+          value={rows.length}
+          tone={rows.length ? "warning" : "success"}
+        />
         <StatCard label="Mức cao" value={high} tone={high ? "danger" : "success"} />
         <StatCard label="Khóa học phụ trách" value={courses.length} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {[{ id: "all", title: "Tất cả khóa" }, ...courses.map((c) => ({ id: c.id, title: c.title }))].map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setCourseFilter(c.id)}
-            className={`rounded-full border px-4 py-1.5 text-sm transition ${
-              courseFilter === c.id
-                ? "border-aurora-blue/50 bg-aurora-blue/20 text-slate-100"
-                : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
-            }`}
-          >
-            {c.title}
-          </button>
-        ))}
+      <div className="overflow-x-auto pb-1">
+        <LiquidSegmentedControl
+          value={courseFilter}
+          aria-label="Lọc khóa học"
+          className="w-max rounded-xl"
+        >
+          {[
+            { id: "all", title: "Tất cả khóa" },
+            ...courses.map((c) => ({ id: c.id, title: c.title })),
+          ].map((c) => (
+            <LiquidSegmentedItem
+              key={c.id}
+              value={c.id}
+              onClick={() => setCourseFilter(c.id)}
+              aria-selected={courseFilter === c.id}
+              className="rounded-lg px-4 py-1.5 text-sm"
+            >
+              {c.title}
+            </LiquidSegmentedItem>
+          ))}
+        </LiquidSegmentedControl>
       </div>
 
       <GlassPanel>
-        <SectionTitle title={`Danh sách (${rows.length})`} icon={<AlertTriangle className="h-4 w-4" />} />
+        <SectionTitle
+          title={`Danh sách (${rows.length})`}
+          icon={<AlertTriangle className="h-4 w-4" />}
+        />
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-400">Không có cảnh báo nào. Bấm “Tính lại cảnh báo” để cập nhật.</p>
+          <p className="text-sm text-slate-400">
+            Không có cảnh báo nào. Bấm “Tính lại cảnh báo” để cập nhật.
+          </p>
         ) : (
           <ul className="space-y-2">
             {rows.map((a) => (

@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  Link,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Brain,
@@ -13,20 +20,29 @@ import {
   UserRound,
   LogOut,
   Menu,
+  X,
   Compass,
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 import { useProfile } from "@/lib/session";
 import { LiquidBar, LiquidPanel, Loading } from "@/components/app/glass";
 import { ThemeToggle } from "@/components/app/theme-toggle";
+import {
+  LiquidButton,
+  LiquidIconButton,
+  LiquidNav,
+  LiquidNavItem,
+  LiquidSegmentedControl,
+  LiquidSegmentedItem,
+} from "@/components/app/liquid";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
+    const { data, error } = await localDb.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
     return { user: data.user };
   },
@@ -52,6 +68,11 @@ const teacherNav = [
   { to: "/profile", label: "Cá nhân", icon: UserRound },
 ];
 
+function isNavActive(pathname: string, to: string) {
+  if (to === "/student" || to === "/teacher" || to === "/profile") return pathname === to;
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
 function Shell() {
   const { data: profile, isLoading, refetch } = useProfile();
   const navigate = useNavigate();
@@ -70,81 +91,115 @@ function Shell() {
   if (!profile) return <Onboarding onDone={() => refetch()} />;
 
   const nav = profile.role === "teacher" ? teacherNav : studentNav;
+  const activeNav = nav.find((item) => isNavActive(pathname, item.to))?.to ?? null;
 
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    await localDb.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-5">
-        <LiquidBar className={cn("px-4 py-3", open ? "rounded-3xl" : "")}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-slate-100">
-              <Brain className="h-5 w-5 text-aurora-blue" />
-              <span className="font-semibold tracking-tight">EduSense</span>
-              <span className="ml-2 hidden rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs text-slate-300 sm:inline">
-                {profile.role === "teacher" ? "Giáo viên" : "Học sinh"}
-              </span>
+    <div className="min-h-screen overflow-x-clip">
+      <header className="sticky top-0 z-40 px-2.5 pt-2.5 sm:px-4 sm:pt-4 lg:px-6">
+        <div className="mx-auto w-full max-w-[1600px]">
+          <LiquidBar
+            className={cn("w-full px-2.5 py-2.5 sm:px-3 lg:px-4", open ? "rounded-3xl" : "")}
+          >
+            <div className="flex min-w-0 items-center justify-between gap-1.5 sm:gap-2">
+              <div className="flex shrink-0 items-center gap-2 pl-1 text-slate-100">
+                <Brain className="h-5 w-5 shrink-0 text-aurora-blue" />
+                <span className="hidden font-semibold tracking-tight min-[360px]:inline">
+                  EduSense
+                </span>
+                <span className="ml-1 hidden rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs text-slate-300 2xl:inline">
+                  {profile.role === "teacher" ? "Giáo viên" : "Học sinh"}
+                </span>
+              </div>
+
+              <LiquidNav
+                value={activeNav}
+                aria-label="Điều hướng chính"
+                className="mx-1 hidden min-w-0 flex-1 justify-center border-0 bg-transparent shadow-none xl:flex"
+              >
+                {nav.map((item) => (
+                  <LiquidNavItem key={item.to} value={item.to} asChild>
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      aria-current={isNavActive(pathname, item.to) ? "page" : undefined}
+                      className="gap-1.5 px-2.5 text-xs 2xl:gap-2 2xl:px-4 2xl:text-sm"
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {item.label}
+                    </Link>
+                  </LiquidNavItem>
+                ))}
+              </LiquidNav>
+
+              <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+                <span className="hidden max-w-36 truncate text-sm text-slate-300 2xl:inline">
+                  {profile.name}
+                </span>
+                <ThemeToggle />
+                <LiquidIconButton
+                  onClick={signOut}
+                  aria-label="Đăng xuất"
+                  variant="outline"
+                  className="text-slate-300"
+                >
+                  <LogOut className="h-4 w-4" />
+                </LiquidIconButton>
+                <LiquidIconButton
+                  onClick={() => setOpen((value) => !value)}
+                  aria-label={open ? "Đóng menu" : "Mở menu"}
+                  aria-expanded={open}
+                  aria-controls="mobile-navigation"
+                  variant="outline"
+                  className="text-slate-300 xl:hidden"
+                >
+                  {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                </LiquidIconButton>
+              </div>
             </div>
 
-            <nav className="hidden items-center gap-1 md:flex">
-              {nav.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "flex items-center gap-2 rounded-full px-4 py-2 text-sm transition",
-                    pathname === item.to
-                      ? "bg-white/15 text-slate-100"
-                      : "text-slate-300 hover:bg-white/10",
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-2">
-              <span className="hidden text-sm text-slate-300 sm:inline">{profile.name}</span>
-              <ThemeToggle />
-              <button
-                onClick={signOut}
-                aria-label="Đăng xuất"
-                className="rounded-full border border-white/15 bg-white/5 p-2 text-slate-300 transition hover:bg-white/15"
+            {open ? (
+              <nav
+                id="mobile-navigation"
+                aria-label="Điều hướng mobile"
+                className="mt-2 grid max-h-[calc(100dvh-6.5rem)] grid-cols-1 gap-1 overflow-y-auto overscroll-contain border-t border-white/10 pt-2 sm:grid-cols-2 xl:hidden"
               >
-                <LogOut className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setOpen((v) => !v)}
-                aria-label="Menu"
-                className="rounded-full border border-white/15 bg-white/5 p-2 text-slate-300 md:hidden"
-              >
-                <Menu className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {open ? (
-            <nav className="mt-3 grid gap-1 md:hidden">
-              {nav.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          ) : null}
-        </LiquidBar>
+                <div className="mb-1 flex min-w-0 items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 sm:col-span-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-100">{profile.name}</p>
+                    <p className="text-xs text-slate-400">
+                      {profile.role === "teacher" ? "Giáo viên" : "Học sinh"}
+                    </p>
+                  </div>
+                  <UserRound className="h-5 w-5 shrink-0 text-aurora-blue" />
+                </div>
+                {nav.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setOpen(false)}
+                    aria-current={isNavActive(pathname, item.to) ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-11 min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
+                      isNavActive(pathname, item.to)
+                        ? "liquid-control-selected border-[var(--glass-border-strong)]"
+                        : "border-transparent text-slate-300 hover:bg-[var(--glass-surface-hover)]",
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                ))}
+              </nav>
+            ) : null}
+          </LiquidBar>
+        </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8">
@@ -161,7 +216,7 @@ function Onboarding({ onDone }: { onDone: () => void }) {
 
   async function save() {
     setLoading(true);
-    const { error } = await supabase.rpc("bootstrap_demo", {
+    const { error } = await localDb.rpc("bootstrap_demo", {
       _name: name || "Người dùng",
       _role: role,
     });
@@ -187,29 +242,26 @@ function Onboarding({ onDone }: { onDone: () => void }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <LiquidSegmentedControl
+          value={role}
+          aria-label="Chọn vai trò"
+          className="mt-3 grid grid-cols-2 rounded-xl"
+        >
           {(["student", "teacher"] as const).map((r) => (
-            <button
+            <LiquidSegmentedItem
               key={r}
+              value={r}
               onClick={() => setRole(r)}
-              className={cn(
-                "rounded-xl border px-3 py-2.5 text-sm transition",
-                role === r
-                  ? "border-aurora-blue/60 bg-aurora-blue/20 text-slate-100"
-                  : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10",
-              )}
+              aria-selected={role === r}
+              className="rounded-lg px-3 py-2.5 text-sm"
             >
               {r === "student" ? "Học sinh" : "Giáo viên"}
-            </button>
+            </LiquidSegmentedItem>
           ))}
-        </div>
-        <button
-          onClick={save}
-          disabled={loading}
-          className="mt-5 w-full rounded-xl bg-gradient-to-r from-aurora-blue to-aurora-violet px-4 py-2.5 text-sm font-semibold text-slate-50 disabled:opacity-60"
-        >
+        </LiquidSegmentedControl>
+        <LiquidButton onClick={save} loading={loading} className="mt-5 w-full">
           {loading ? "Đang khởi tạo dữ liệu…" : "Bắt đầu"}
-        </button>
+        </LiquidButton>
       </LiquidPanel>
     </div>
   );

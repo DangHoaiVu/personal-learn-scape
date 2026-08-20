@@ -2,15 +2,21 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { GlassPanel, LiquidPanel, Loading } from "@/components/app/glass";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/local-client";
 
 export const Route = createFileRoute("/_authenticated/student/attempts/$attemptId")({
   head: () => ({
     meta: [
       { title: "Xem lại bài kiểm tra · EduSense" },
-      { name: "description", content: "Xem lại từng câu hỏi, đáp án bạn đã chọn và đáp án đúng của bài kiểm tra." },
+      {
+        name: "description",
+        content: "Xem lại từng câu hỏi, đáp án bạn đã chọn và đáp án đúng của bài kiểm tra.",
+      },
       { property: "og:title", content: "Xem lại bài kiểm tra · EduSense" },
-      { property: "og:description", content: "Đối chiếu đáp án để biết chính xác cần ôn lại chủ đề nào." },
+      {
+        property: "og:description",
+        content: "Đối chiếu đáp án để biết chính xác cần ôn lại chủ đề nào.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -32,18 +38,21 @@ function AttemptReview() {
   const { data, isLoading } = useQuery({
     queryKey: ["attempt-review", attemptId],
     queryFn: async () => {
-      const attempt = await supabase
+      const attempt = await localDb
         .from("quiz_attempts")
         .select("id,score,attempted_at,quiz:quizzes(id,title,course_id)")
         .eq("id", attemptId)
         .maybeSingle();
-      const qa = await supabase
+      const qa = await localDb
         .from("question_attempts")
         .select("question_id,is_correct,chosen_answer")
         .eq("quiz_attempt_id", attemptId);
-      const ids = (qa.data ?? []).map((r) => r.question_id);
+      const ids = (qa.data ?? []).map((r: { question_id: string }) => r.question_id);
       const questions = ids.length
-        ? await supabase.from("questions").select("id,text,topic_tag,options,correct_answer").in("id", ids)
+        ? await localDb
+            .from("questions")
+            .select("id,text,topic_tag,options,correct_answer")
+            .in("id", ids)
         : { data: [] };
       return {
         attempt: attempt.data as unknown as {
@@ -52,7 +61,11 @@ function AttemptReview() {
           attempted_at: string;
           quiz: { id: string; title: string; course_id: string } | null;
         } | null,
-        answers: (qa.data ?? []) as { question_id: string; is_correct: boolean; chosen_answer: string | null }[],
+        answers: (qa.data ?? []) as {
+          question_id: string;
+          is_correct: boolean;
+          chosen_answer: string | null;
+        }[],
         questions: (questions.data ?? []) as unknown as QuestionRow[],
       };
     },
@@ -84,8 +97,8 @@ function AttemptReview() {
         <div>
           <h1 className="text-xl font-semibold text-slate-100">{data.attempt.quiz?.title}</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Làm ngày {new Date(data.attempt.attempted_at).toLocaleDateString("vi-VN")} · Đúng {correct}/
-            {data.answers.length} câu
+            Làm ngày {new Date(data.attempt.attempted_at).toLocaleDateString("vi-VN")} · Đúng{" "}
+            {correct}/{data.answers.length} câu
           </p>
         </div>
         <p className="stat-num text-4xl font-semibold text-slate-100">{data.attempt.score}</p>
@@ -129,8 +142,14 @@ function AttemptReview() {
                   >
                     <span className="stat-num mr-2 text-slate-400">{o.key}</span>
                     {o.text}
-                    {isChosen ? <span className="ml-2 text-xs text-slate-400">(bạn chọn)</span> : null}
-                    {isCorrect ? <span className="ml-2 text-xs text-[color:var(--success)]">(đáp án đúng)</span> : null}
+                    {isChosen ? (
+                      <span className="ml-2 text-xs text-slate-400">(bạn chọn)</span>
+                    ) : null}
+                    {isCorrect ? (
+                      <span className="ml-2 text-xs text-[color:var(--success)]">
+                        (đáp án đúng)
+                      </span>
+                    ) : null}
                   </div>
                 );
               })}

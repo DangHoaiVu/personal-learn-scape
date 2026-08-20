@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Brain, LineChart, ShieldAlert, Sparkles, Target, GraduationCap } from "lucide-react";
 import { GlassPanel, LiquidPanel } from "@/components/app/glass";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,12 +56,9 @@ function Landing() {
             <Brain className="h-5 w-5 text-aurora-blue" />
             <span className="font-semibold tracking-tight">EduSense</span>
           </div>
-          <Link
-            to="/auth"
-            className="rounded-full border border-white/20 bg-white/10 px-5 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/20"
-          >
-            Đăng nhập
-          </Link>
+          <Button asChild variant="outline">
+            <Link to="/auth">Đăng nhập</Link>
+          </Button>
         </LiquidPanel>
 
         <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
@@ -79,18 +77,12 @@ function Landing() {
               sơ năng lực, gợi ý lộ trình ôn tập và cảnh báo giảng viên trước khi sinh viên rớt lại.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                to="/auth"
-                className="rounded-full bg-gradient-to-r from-aurora-blue to-aurora-violet px-6 py-3 text-sm font-semibold text-slate-50 shadow-lg shadow-aurora-violet/25 transition hover:brightness-110"
-              >
-                Bắt đầu ngay
-              </Link>
-              <Link
-                to="/auth"
-                className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10"
-              >
-                Xem bản demo
-              </Link>
+              <Button asChild size="lg">
+                <Link to="/auth">Bắt đầu ngay</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link to="/auth">Xem bản demo</Link>
+              </Button>
             </div>
           </div>
 

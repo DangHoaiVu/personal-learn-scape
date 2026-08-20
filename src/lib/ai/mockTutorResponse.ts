@@ -2,7 +2,7 @@
  * ĐIỂM NỐI API AI THẬT.
  *
  * Toàn bộ phần "AI" của hệ thống đi qua hai hàm dưới đây. Khi muốn dùng AI thật
- * (OpenAI / Gemini / Lovable AI Gateway...), chỉ cần thay phần thân của
+ * (OpenAI / Gemini hoặc một model local...), chỉ cần thay phần thân của
  * `studentTutorReply` và `teacherTutorReply` bằng lời gọi API — không cần sửa
  * bất kỳ file giao diện nào khác.
  *
